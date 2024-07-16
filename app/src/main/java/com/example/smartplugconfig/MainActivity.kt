@@ -56,8 +56,12 @@ fun ButtonsWithTextOutput(textToDisplay: String, setCurrentTextOutput: (String) 
         }
         Spacer(modifier = Modifier.height(20.dp))
         Button(onClick = {
-            val result = sendWifiConfig()
-            setCurrentTextOutput(result)
+            coroutineScope.launch (Dispatchers.IO){
+                val result = sendWifiConfig()
+                withContext(Dispatchers.Main) {
+                    setCurrentTextOutput(result)
+                }
+            }
         }) {
             Text("Send Wifi config")
         }
@@ -71,7 +75,7 @@ fun ButtonsWithTextOutput(textToDisplay: String, setCurrentTextOutput: (String) 
         Spacer(modifier = Modifier.height(20.dp))
         Button(onClick = {
             coroutineScope.launch (Dispatchers.IO){
-                val result = sendWifiConfig()
+                val result = sendMQTTConfig()
                 withContext(Dispatchers.Main) {
                     setCurrentTextOutput(result)
                 }
@@ -81,10 +85,14 @@ fun ButtonsWithTextOutput(textToDisplay: String, setCurrentTextOutput: (String) 
         }
         Spacer(modifier = Modifier.height(20.dp))
         Button(onClick = {
-            val result = getPowerReading()
-            setCurrentTextOutput(result)
+            coroutineScope.launch (Dispatchers.IO){
+                val result = getPowerReading()
+                withContext(Dispatchers.Main) {
+                    setCurrentTextOutput(result)
+                }
+            }
         }) {
-            Text("Pull data point")
+            Text("Pull power data")
         }
         Spacer(modifier = Modifier.height(20.dp))
         Text(textToDisplay)
@@ -97,29 +105,32 @@ fun connectToPlugWifi(): String {
     return "Trying to connect to plug WiFi..."
 }
 
-fun sendWifiConfig(): String {
+suspend fun sendWifiConfig(): String {
     //cm?cmnd=Backlog%20SSID1%20Pixel%3B%20Password1%20123456789
-    val urlString = "http://192.168.201.167/cm?cmnd=Power%20off"
+    //cm?cmnd=Power%20off
+    val urlString = "http://192.168.4.1/cm?cmnd=Backlog%20SSID1%20Pixel%3B%20Password1%20123456789"
     return try {
         Log.d("sendWifiConfig", "Attempting to send request to $urlString")
         val url = URL(urlString)
-        with(url.openConnection() as HttpURLConnection) {
-            requestMethod = "GET" // or "POST" if you need to send some data
-            // Set any required headers here
-            Log.d("sendWifiConfig", "Request method set to $requestMethod")
+        withContext(Dispatchers.IO){
+            with(url.openConnection() as HttpURLConnection) {
+                requestMethod = "GET" // or "POST" if you need to send some data
+                // Set any required headers here
+                Log.d("sendWifiConfig", "Request method set to $requestMethod")
 
-            // For POST request, write output stream
-            // outputStream.write("Your request body".toByteArray())
-            // outputStream.flush()
+                // For POST request, write output stream
+                // outputStream.write("Your request body".toByteArray())
+                // outputStream.flush()
 
-            val responseCode = responseCode
-            Log.d("sendWifiConfig", "Response code: $responseCode")
-            if (responseCode == HttpURLConnection.HTTP_OK) {
-                val response = inputStream.bufferedReader().use(BufferedReader::readText)
-                Log.d("sendWifiConfig", "Response: $response")
-                "Response: $response"
-            } else {
-                "HTTP error code: $responseCode"
+                val responseCode = responseCode
+                Log.d("sendWifiConfig", "Response code: $responseCode")
+                if (responseCode == HttpURLConnection.HTTP_OK) {
+                    val response = inputStream.bufferedReader().use(BufferedReader::readText)
+                    Log.d("sendWifiConfig", "Response: $response")
+                    "Response: $response"
+                } else {
+                    "HTTP error code: $responseCode"
+                }
             }
         }
     } catch (e: Exception) {
@@ -136,7 +147,7 @@ fun turnOnHotspot(): String {
 }
 
 suspend fun sendMQTTConfig(): String {
-    val urlString = "http://192.168.201.167/cm?cmnd=Power%20off"
+    val urlString = "http://192.168.201.167/cm?cmnd=Backlog%20MqttHost%20testHost%3B%20MqttUser%20Test1%3B%20MqttPassword%20Test2%3B%20Topic%20smartPlugTest"
     return try {
         Log.d("sendMQTTConfig", "Attempting to send request to $urlString")
         val url = URL(urlString)
@@ -168,11 +179,39 @@ suspend fun sendMQTTConfig(): String {
     }
 }
 
-fun getPowerReading(): String {
-    // Implement the actual logic here
-    // For now, just return a placeholder string
-    return "Getting power reading..."
+suspend fun getPowerReading(): String {
+    val urlString = "http://192.168.201.167/cm?cmnd=Status%208"
+    return try {
+        Log.d("getPowerReading", "Attempting to send request to $urlString")
+        val url = URL(urlString)
+        withContext(Dispatchers.IO) {
+            with(url.openConnection() as HttpURLConnection) {
+                requestMethod = "GET" // or "POST" if you need to send some data
+                // Set any required headers here
+                Log.d("getPowerReading", "Request method set to $requestMethod")
+
+                // For POST request, write output stream
+                // outputStream.write("Your request body".toByteArray())
+                // outputStream.flush()
+
+                val responseCode = responseCode
+                Log.d("getPowerReading", "Response code: $responseCode")
+                if (responseCode == HttpURLConnection.HTTP_OK) {
+                    val response = inputStream.bufferedReader().use(BufferedReader::readText)
+                    Log.d("getPowerReading", "Response: $response")
+                    "Response: $response"
+                } else {
+                    "HTTP error code: $responseCode"
+                }
+            }
+        }
+    } catch (e: Exception) {
+        val errorMessage = "Error: ${e.localizedMessage ?: "An unknown error occurred"}"
+        Log.e("getPowerReading", errorMessage, e)
+        errorMessage
+    }
 }
+
 
 
 
