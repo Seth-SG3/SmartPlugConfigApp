@@ -13,10 +13,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.smartplugconfig.ui.theme.SmartPlugConfigTheme
+import android.util.Log
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.BufferedReader
 import java.net.HttpURLConnection
 import java.net.URL
-import android.util.Log
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -39,6 +42,7 @@ fun SmartPlugConfigApp() {
 
 @Composable
 fun ButtonsWithTextOutput(textToDisplay: String, setCurrentTextOutput: (String) -> Unit, modifier: Modifier = Modifier) {
+    val coroutineScope = rememberCoroutineScope()
     Column(
         modifier = modifier.fillMaxSize().padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally
@@ -66,8 +70,12 @@ fun ButtonsWithTextOutput(textToDisplay: String, setCurrentTextOutput: (String) 
         }
         Spacer(modifier = Modifier.height(20.dp))
         Button(onClick = {
-            val result = sendMQTTConfig()
-            setCurrentTextOutput(result)
+            coroutineScope.launch (Dispatchers.IO){
+                val result = sendWifiConfig()
+                withContext(Dispatchers.Main) {
+                    setCurrentTextOutput(result)
+                }
+            }
         }) {
             Text("Send MQTT config")
         }
@@ -91,7 +99,7 @@ fun connectToPlugWifi(): String {
 
 fun sendWifiConfig(): String {
     //cm?cmnd=Backlog%20SSID1%20Pixel%3B%20Password1%20123456789
-    val urlString = "http://192.168.4.1/cm?cmnd=Power%20off"
+    val urlString = "http://192.168.201.167/cm?cmnd=Power%20off"
     return try {
         Log.d("sendWifiConfig", "Attempting to send request to $urlString")
         val url = URL(urlString)
@@ -127,33 +135,36 @@ fun turnOnHotspot(): String {
     return "Turning on hotspot..."
 }
 
-fun sendMQTTConfig(): String {
+suspend fun sendMQTTConfig(): String {
     val urlString = "http://192.168.201.167/cm?cmnd=Power%20off"
     return try {
         Log.d("sendMQTTConfig", "Attempting to send request to $urlString")
         val url = URL(urlString)
-        with(url.openConnection() as HttpURLConnection) {
-            requestMethod = "GET" // or "POST" if you need to send some data
-            // Set any required headers here
-            Log.d("sendMQTTConfig", "Request method set to $requestMethod")
+        withContext(Dispatchers.IO) {
+            with(url.openConnection() as HttpURLConnection) {
+                requestMethod = "GET" // or "POST" if you need to send some data
+                // Set any required headers here
+                Log.d("sendMQTTConfig", "Request method set to $requestMethod")
 
-            // For POST request, write output stream
-            // outputStream.write("Your request body".toByteArray())
-            // outputStream.flush()
+                // For POST request, write output stream
+                // outputStream.write("Your request body".toByteArray())
+                // outputStream.flush()
 
-            val responseCode = responseCode
-            Log.d("sendMQTTConfig", "Response code: $responseCode")
-            if (responseCode == HttpURLConnection.HTTP_OK) {
-                val response = inputStream.bufferedReader().use(BufferedReader::readText)
-                Log.d("sendMQTTConfig", "Response: $response")
-                "Response: $response"
-            } else {
-                "HTTP error code: $responseCode"
+                val responseCode = responseCode
+                Log.d("sendMQTTConfig", "Response code: $responseCode")
+                if (responseCode == HttpURLConnection.HTTP_OK) {
+                    val response = inputStream.bufferedReader().use(BufferedReader::readText)
+                    Log.d("sendMQTTConfig", "Response: $response")
+                    "Response: $response"
+                } else {
+                    "HTTP error code: $responseCode"
+                }
             }
         }
     } catch (e: Exception) {
-        Log.e("sendMQTTConfig", "Exception occurred", e)
-        "Error: ${e.localizedMessage ?: "An unknown error occurred"}"
+        val errorMessage = "Error: ${e.localizedMessage ?: "An unknown error occurred"}"
+        Log.e("sendMQTTConfig", errorMessage, e)
+        errorMessage
     }
 }
 
