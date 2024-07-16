@@ -34,11 +34,11 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun SmartPlugConfigApp() {
     var currentTextOutput by remember { mutableStateOf("output") }
-    ButtonsWithTextOutput(TextToDisplay = currentTextOutput, setCurrentTextOutput = { currentTextOutput = it })
+    ButtonsWithTextOutput(textToDisplay = currentTextOutput, setCurrentTextOutput = { currentTextOutput = it })
 }
 
 @Composable
-fun ButtonsWithTextOutput(TextToDisplay: String, setCurrentTextOutput: (String) -> Unit, modifier: Modifier = Modifier) {
+fun ButtonsWithTextOutput(textToDisplay: String, setCurrentTextOutput: (String) -> Unit, modifier: Modifier = Modifier) {
     Column(
         modifier = modifier.fillMaxSize().padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally
@@ -79,7 +79,7 @@ fun ButtonsWithTextOutput(TextToDisplay: String, setCurrentTextOutput: (String) 
             Text("Pull data point")
         }
         Spacer(modifier = Modifier.height(20.dp))
-        Text(TextToDisplay)
+        Text(textToDisplay)
     }
 }
 
