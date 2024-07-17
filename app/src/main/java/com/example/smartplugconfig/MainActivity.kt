@@ -20,6 +20,22 @@ import kotlinx.coroutines.withContext
 import java.io.BufferedReader
 import java.net.HttpURLConnection
 import java.net.URL
+import android.content.Context
+import android.net.DhcpInfo
+import android.net.wifi.WifiManager
+import android.os.AsyncTask
+import androidx.compose.ui.platform.LocalContext
+import java.io.IOException
+import java.net.InetSocketAddress
+import java.net.Socket
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
+import android.widget.Toast
+import androidx.activity.compose.setContent
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.ui.platform.LocalContext
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -29,6 +45,22 @@ class MainActivity : ComponentActivity() {
             SmartPlugConfigTheme {
                 SmartPlugConfigApp()
             }
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+                    requestPermissions(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION), 1)
+                }
+            }
+        }
+    }
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<String>, grantResults: IntArray) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == 1) {
+            if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                // Permission granted
+            } else {
+                // Permission denied
+                Toast.makeText(this, "Permission denied", Toast.LENGTH_SHORT).show()
+            }
         }
     }
 }
@@ -37,12 +69,20 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun SmartPlugConfigApp() {
     var currentTextOutput by remember { mutableStateOf("output") }
-    ButtonsWithTextOutput(textToDisplay = currentTextOutput, setCurrentTextOutput = { currentTextOutput = it })
+    val context = LocalContext.current
+    ButtonsWithTextOutput(textToDisplay = currentTextOutput, setCurrentTextOutput = { currentTextOutput = it } , context = context)
 }
 
 @Composable
-fun ButtonsWithTextOutput(textToDisplay: String, setCurrentTextOutput: (String) -> Unit, modifier: Modifier = Modifier) {
+fun ButtonsWithTextOutput(
+    textToDisplay: String,
+    setCurrentTextOutput: (String) -> Unit,
+    context: Context,
+    modifier: Modifier = Modifier
+) {
     val coroutineScope = rememberCoroutineScope()
+    val deviceScanner = DeviceScanner(context)
+
     Column(
         modifier = modifier.fillMaxSize().padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally
@@ -56,7 +96,7 @@ fun ButtonsWithTextOutput(textToDisplay: String, setCurrentTextOutput: (String) 
         }
         Spacer(modifier = Modifier.height(20.dp))
         Button(onClick = {
-            coroutineScope.launch (Dispatchers.IO){
+            coroutineScope.launch(Dispatchers.IO) {
                 val result = sendWifiConfig()
                 withContext(Dispatchers.Main) {
                     setCurrentTextOutput(result)
@@ -74,14 +114,22 @@ fun ButtonsWithTextOutput(textToDisplay: String, setCurrentTextOutput: (String) 
         }
         Spacer(modifier = Modifier.height(20.dp))
         Button(onClick = {
-            val result = ipScan()
-            setCurrentTextOutput(result)
+            deviceScanner.scanDevices(object : DeviceScanner.ScanCallback {
+                override fun onScanCompleted(devices: List<String>) {
+                    val result = if (devices.isEmpty()) {
+                        "No devices found"
+                    } else {
+                        devices.joinToString("\n")
+                    }
+                    setCurrentTextOutput(result)
+                }
+            })
         }) {
             Text("find IP address of plug")
         }
         Spacer(modifier = Modifier.height(20.dp))
         Button(onClick = {
-            coroutineScope.launch (Dispatchers.IO){
+            coroutineScope.launch(Dispatchers.IO) {
                 val result = sendMQTTConfig()
                 withContext(Dispatchers.Main) {
                     setCurrentTextOutput(result)
@@ -92,7 +140,7 @@ fun ButtonsWithTextOutput(textToDisplay: String, setCurrentTextOutput: (String) 
         }
         Spacer(modifier = Modifier.height(20.dp))
         Button(onClick = {
-            coroutineScope.launch (Dispatchers.IO){
+            coroutineScope.launch(Dispatchers.IO) {
                 val result = getPowerReading()
                 withContext(Dispatchers.Main) {
                     setCurrentTextOutput(result)
@@ -223,6 +271,59 @@ suspend fun getPowerReading(): String {
     }
 }
 
+
+// code from facto ,c lass used in ip scan functionality
+
+
+class DeviceScanner(private val context: Context) {
+
+    fun scanDevices(callback: ScanCallback?) {
+        ScanTask(callback).execute()
+    }
+
+    inner class ScanTask(private val callback: ScanCallback?) : AsyncTask<Void, Void, List<String>>() {
+        override fun doInBackground(vararg params: Void?): List<String> {
+            val deviceList = mutableListOf<String>()
+            val wifiManager = context.applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
+            val dhcpInfo = wifiManager.dhcpInfo
+
+            Log.d("DeviceScanner", "Starting scan in range 192.168.y.z")
+
+            // Scan the range 192.168.y.z where y and z vary from 0 to 255
+            for (y in 0..255) {
+                for (z in 1..254) { // Skipping 0 and 255 for z as they are typically not used for hosts
+                    val hostAddress = "192.168.$y.$z"
+
+                    // Log each host address being scanned
+                    Log.d("DeviceScanner", "Scanning IP: $hostAddress")
+
+                    // Check if the specific IP address is being scanned
+                    //if (hostAddress == "192.168.240.238") {
+                        //Log.d("DeviceScanner", "Specific IP 192.168.240.238 is being scanned")
+                    //}
+
+                    try {
+                        val socket = Socket()
+                        socket.connect(InetSocketAddress(hostAddress, 80), 20) // Increased timeout to 500ms
+                        deviceList.add(hostAddress)
+                        socket.close()
+                    } catch (e: IOException) {
+                        Log.d("DeviceScanner", "Failed to connect to $hostAddress: ${e.message}")
+                    }
+                }
+            }
+            return deviceList
+        }
+
+        override fun onPostExecute(result: List<String>) {
+            callback?.onScanCompleted(result)
+        }
+    }
+
+    interface ScanCallback {
+        fun onScanCompleted(devices: List<String>)
+    }
+}
 
 
 
