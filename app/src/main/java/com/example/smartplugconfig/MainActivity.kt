@@ -47,7 +47,7 @@ fun ButtonsWithTextOutput(textToDisplay: String, setCurrentTextOutput: (String) 
         modifier = modifier.fillMaxSize().padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Spacer(modifier = Modifier.height(300.dp))
+        Spacer(modifier = Modifier.height(250.dp))
         Button(onClick = {
             val result = connectToPlugWifi()
             setCurrentTextOutput(result)
@@ -71,6 +71,13 @@ fun ButtonsWithTextOutput(textToDisplay: String, setCurrentTextOutput: (String) 
             setCurrentTextOutput(result)
         }) {
             Text("Switch on Hotspot")
+        }
+        Spacer(modifier = Modifier.height(20.dp))
+        Button(onClick = {
+            val result = ipScan()
+            setCurrentTextOutput(result)
+        }) {
+            Text("find IP address of plug")
         }
         Spacer(modifier = Modifier.height(20.dp))
         Button(onClick = {
@@ -108,7 +115,7 @@ fun connectToPlugWifi(): String {
 suspend fun sendWifiConfig(): String {
     //cm?cmnd=Backlog%20SSID1%20Pixel%3B%20Password1%20123456789
     //cm?cmnd=Power%20off
-    val urlString = "http://192.168.4.1/cm?cmnd=Backlog%20SSID1%20Pixel%3B%20Password1%20123456789"
+    val urlString = "http://192.168.4.1/cm?cmnd=Backlog%20SSID1%20Pixel%3B%20Password1%20123456789%20WifiConfig%205"
     return try {
         Log.d("sendWifiConfig", "Attempting to send request to $urlString")
         val url = URL(urlString)
@@ -146,8 +153,12 @@ fun turnOnHotspot(): String {
     return "Turning on hotspot..."
 }
 
+fun ipScan(): String{
+    return "Scanning for IP Address..."
+}
+
 suspend fun sendMQTTConfig(): String {
-    val urlString = "http://192.168.201.167/cm?cmnd=Backlog%20MqttHost%20testHost%3B%20MqttUser%20Test1%3B%20MqttPassword%20Test2%3B%20Topic%20smartPlugTest"
+    val urlString = "http://192.168.240.238/cm?cmnd=Backlog%20MqttHost%20testHost%3B%20MqttUser%20Test1%3B%20MqttPassword%20Test2%3B%20Topic%20smartPlugTest"
     return try {
         Log.d("sendMQTTConfig", "Attempting to send request to $urlString")
         val url = URL(urlString)
@@ -180,7 +191,7 @@ suspend fun sendMQTTConfig(): String {
 }
 
 suspend fun getPowerReading(): String {
-    val urlString = "http://192.168.201.167/cm?cmnd=Status%208"
+    val urlString = "http://192.168.240.238/cm?cmnd=Status%208"
     return try {
         Log.d("getPowerReading", "Attempting to send request to $urlString")
         val url = URL(urlString)
