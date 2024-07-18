@@ -36,6 +36,23 @@ import androidx.activity.compose.setContent
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.State
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.layout.*
+//noinspection UsingMaterialAndMaterial3Libraries
+import androidx.compose.material.*
+
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -65,12 +82,160 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-@Preview
+
+
+class MainViewModel : ViewModel() {
+    private val _ipAddress = mutableStateOf<String?>(null)
+    val ipAddress: State<String?> = _ipAddress
+
+    fun scanDevices(context: Context, onScanCompleted: (String?) -> Unit) {
+        val deviceScanner = DeviceScanner(context)
+        deviceScanner.scanDevices(object : DeviceScanner.ScanCallback {
+            override fun onScanCompleted(devices: List<String>) {
+                val result = if (devices.isEmpty()) {
+                    "No devices found"
+                } else {
+                    devices.joinToString("\\n")
+                }
+                _ipAddress.value = result
+                onScanCompleted(result)
+            }
+        })
+    }
+
+    fun connectToPlugWifi(): String {
+        // Implement the actual logic here
+        // For now, just return a placeholder string
+        return "Trying to connect to plug WiFi..."
+    }
+
+    fun turnOnHotspot(): String {
+        // Implement the actual logic here
+        // For now, just return a placeholder string
+        return "Turning on hotspot..."
+    }
+
+    fun ipScan(): String {
+        return "Scanning for IP Address..."
+    }
+
+    fun sendWifiConfig(onResult: (String) -> Unit) {
+        viewModelScope.launch {
+            val result = sendWifiConfigInternal()
+            onResult(result)
+        }
+    }
+
+    private suspend fun sendWifiConfigInternal(): String {
+        val urlString = "http://192.168.4.1/cm?cmnd=Backlog%20SSID1%20Pixel%3B%20Password1%20123456789%20WifiConfig%205"
+        return try {
+            Log.d("sendWifiConfig", "Attempting to send request to $urlString")
+            val url = URL(urlString)
+            withContext(Dispatchers.IO) {
+                with(url.openConnection() as HttpURLConnection) {
+                    requestMethod = "GET" // or "POST" if you need to send some data
+                    Log.d("sendWifiConfig", "Request method set to $requestMethod")
+
+                    val responseCode = responseCode
+                    Log.d("sendWifiConfig", "Response code: $responseCode")
+                    if (responseCode == HttpURLConnection.HTTP_OK) {
+                        val response = inputStream.bufferedReader().use(BufferedReader::readText)
+                        Log.d("sendWifiConfig", "Response: $response")
+                        "Response: $response"
+                    } else {
+                        "HTTP error code: $responseCode"
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            Log.e("sendWifiConfig", "Exception occurred", e)
+            "Error: ${e.localizedMessage ?: "An unknown error occurred"}"
+        }
+    }
+
+    fun sendMQTTConfig(onResult: (String) -> Unit) {
+        viewModelScope.launch {
+            val result = sendMQTTConfigInternal()
+            onResult(result)
+        }
+    }
+
+    private suspend fun sendMQTTConfigInternal(): String {
+        val urlString = "http://192.168.240.238/cm?cmnd=Backlog%20MqttHost%20testHost%3B%20MqttUser%20Test1%3B%20MqttPassword%20Test2%3B%20Topic%20smartPlugTest"
+        return try {
+            Log.d("sendMQTTConfig", "Attempting to send request to $urlString")
+            val url = URL(urlString)
+            withContext(Dispatchers.IO) {
+                with(url.openConnection() as HttpURLConnection) {
+                    requestMethod = "GET" // or "POST" if you need to send some data
+                    Log.d("sendMQTTConfig", "Request method set to $requestMethod")
+
+                    val responseCode = responseCode
+                    Log.d("sendMQTTConfig", "Response code: $responseCode")
+                    if (responseCode == HttpURLConnection.HTTP_OK) {
+                        val response = inputStream.bufferedReader().use(BufferedReader::readText)
+                        Log.d("sendMQTTConfig", "Response: $response")
+                        "Response: $response"
+                    } else {
+                        "HTTP error code: $responseCode"
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            val errorMessage = "Error: ${e.localizedMessage ?: "An unknown error occurred"}"
+            Log.e("sendMQTTConfig", errorMessage, e)
+            errorMessage
+        }
+    }
+
+    fun getPowerReading(onResult: (String) -> Unit) {
+        viewModelScope.launch {
+            val result = getPowerReadingInternal()
+            onResult(result)
+        }
+    }
+
+    private suspend fun getPowerReadingInternal(): String {
+        val urlString = "http://192.168.240.238/cm?cmnd=Status%208"
+        return try {
+            Log.d("getPowerReading", "Attempting to send request to $urlString")
+            val url = URL(urlString)
+            withContext(Dispatchers.IO) {
+                with(url.openConnection() as HttpURLConnection) {
+                    requestMethod = "GET" // or "POST" if you need to send some data
+                    Log.d("getPowerReading", "Request method set to $requestMethod")
+
+                    val responseCode = responseCode
+                    Log.d("getPowerReading", "Response code: $responseCode")
+                    if (responseCode == HttpURLConnection.HTTP_OK) {
+                        val response = inputStream.bufferedReader().use(BufferedReader::readText)
+                        Log.d("getPowerReading", "Response: $response")
+                        "Response: $response"
+                    } else {
+                        "HTTP error code: $responseCode"
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            val errorMessage = "Error: ${e.localizedMessage ?: "An unknown error occurred"}"
+            Log.e("getPowerReading", errorMessage, e)
+            errorMessage
+        }
+    }
+}
+
+
 @Composable
-fun SmartPlugConfigApp() {
+fun SmartPlugConfigApp(viewModel: MainViewModel = viewModel()) {
     var currentTextOutput by remember { mutableStateOf("output") }
     val context = LocalContext.current
-    ButtonsWithTextOutput(textToDisplay = currentTextOutput, setCurrentTextOutput = { currentTextOutput = it } , context = context)
+
+    ButtonsWithTextOutput(
+        textToDisplay = currentTextOutput,
+        setCurrentTextOutput = { currentTextOutput = it },
+        context = context,
+        viewModel = viewModel
+    )
 }
 
 @Composable
@@ -78,10 +243,10 @@ fun ButtonsWithTextOutput(
     textToDisplay: String,
     setCurrentTextOutput: (String) -> Unit,
     context: Context,
+    viewModel: MainViewModel,
     modifier: Modifier = Modifier
 ) {
     val coroutineScope = rememberCoroutineScope()
-    val deviceScanner = DeviceScanner(context)
 
     Column(
         modifier = modifier.fillMaxSize().padding(16.dp),
@@ -89,62 +254,48 @@ fun ButtonsWithTextOutput(
     ) {
         Spacer(modifier = Modifier.height(250.dp))
         Button(onClick = {
-            val result = connectToPlugWifi()
+            val result = viewModel.connectToPlugWifi()
             setCurrentTextOutput(result)
         }) {
             Text("Connect to plug")
         }
         Spacer(modifier = Modifier.height(20.dp))
         Button(onClick = {
-            coroutineScope.launch(Dispatchers.IO) {
-                val result = sendWifiConfig()
-                withContext(Dispatchers.Main) {
-                    setCurrentTextOutput(result)
-                }
+            viewModel.sendWifiConfig { result ->
+                setCurrentTextOutput(result)
             }
         }) {
             Text("Send Wifi config")
         }
         Spacer(modifier = Modifier.height(20.dp))
         Button(onClick = {
-            val result = turnOnHotspot()
+            val result = viewModel.turnOnHotspot()
             setCurrentTextOutput(result)
         }) {
             Text("Switch on Hotspot")
         }
         Spacer(modifier = Modifier.height(20.dp))
         Button(onClick = {
-            deviceScanner.scanDevices(object : DeviceScanner.ScanCallback {
-                override fun onScanCompleted(devices: List<String>) {
-                    val result = if (devices.isEmpty()) {
-                        "No devices found"
-                    } else {
-                        devices.joinToString("\n")
-                    }
+            viewModel.scanDevices(context) { result ->
+                if (result != null) {
                     setCurrentTextOutput(result)
                 }
-            })
+            }
         }) {
             Text("find IP address of plug")
         }
         Spacer(modifier = Modifier.height(20.dp))
         Button(onClick = {
-            coroutineScope.launch(Dispatchers.IO) {
-                val result = sendMQTTConfig()
-                withContext(Dispatchers.Main) {
-                    setCurrentTextOutput(result)
-                }
+            viewModel.sendMQTTConfig { result ->
+                setCurrentTextOutput(result)
             }
         }) {
             Text("Send MQTT config")
         }
         Spacer(modifier = Modifier.height(20.dp))
         Button(onClick = {
-            coroutineScope.launch(Dispatchers.IO) {
-                val result = getPowerReading()
-                withContext(Dispatchers.Main) {
-                    setCurrentTextOutput(result)
-                }
+            viewModel.getPowerReading { result ->
+                setCurrentTextOutput(result)
             }
         }) {
             Text("Pull power data")
@@ -154,125 +305,9 @@ fun ButtonsWithTextOutput(
     }
 }
 
-fun connectToPlugWifi(): String {
-    // Implement the actual logic here
-    // For now, just return a placeholder string
-    return "Trying to connect to plug WiFi..."
-}
-
-suspend fun sendWifiConfig(): String {
-    //cm?cmnd=Backlog%20SSID1%20Pixel%3B%20Password1%20123456789
-    //cm?cmnd=Power%20off
-    val urlString = "http://192.168.4.1/cm?cmnd=Backlog%20SSID1%20Pixel%3B%20Password1%20123456789%20WifiConfig%205"
-    return try {
-        Log.d("sendWifiConfig", "Attempting to send request to $urlString")
-        val url = URL(urlString)
-        withContext(Dispatchers.IO){
-            with(url.openConnection() as HttpURLConnection) {
-                requestMethod = "GET" // or "POST" if you need to send some data
-                // Set any required headers here
-                Log.d("sendWifiConfig", "Request method set to $requestMethod")
-
-                // For POST request, write output stream
-                // outputStream.write("Your request body".toByteArray())
-                // outputStream.flush()
-
-                val responseCode = responseCode
-                Log.d("sendWifiConfig", "Response code: $responseCode")
-                if (responseCode == HttpURLConnection.HTTP_OK) {
-                    val response = inputStream.bufferedReader().use(BufferedReader::readText)
-                    Log.d("sendWifiConfig", "Response: $response")
-                    "Response: $response"
-                } else {
-                    "HTTP error code: $responseCode"
-                }
-            }
-        }
-    } catch (e: Exception) {
-        Log.e("sendWifiConfig", "Exception occurred", e)
-        "Error: ${e.localizedMessage ?: "An unknown error occurred"}"
-    }
-}
 
 
-fun turnOnHotspot(): String {
-    // Implement the actual logic here
-    // For now, just return a placeholder string
-    return "Turning on hotspot..."
-}
-
-fun ipScan(): String{
-    return "Scanning for IP Address..."
-}
-
-suspend fun sendMQTTConfig(): String {
-    val urlString = "http://192.168.240.238/cm?cmnd=Backlog%20MqttHost%20testHost%3B%20MqttUser%20Test1%3B%20MqttPassword%20Test2%3B%20Topic%20smartPlugTest"
-    return try {
-        Log.d("sendMQTTConfig", "Attempting to send request to $urlString")
-        val url = URL(urlString)
-        withContext(Dispatchers.IO) {
-            with(url.openConnection() as HttpURLConnection) {
-                requestMethod = "GET" // or "POST" if you need to send some data
-                // Set any required headers here
-                Log.d("sendMQTTConfig", "Request method set to $requestMethod")
-
-                // For POST request, write output stream
-                // outputStream.write("Your request body".toByteArray())
-                // outputStream.flush()
-
-                val responseCode = responseCode
-                Log.d("sendMQTTConfig", "Response code: $responseCode")
-                if (responseCode == HttpURLConnection.HTTP_OK) {
-                    val response = inputStream.bufferedReader().use(BufferedReader::readText)
-                    Log.d("sendMQTTConfig", "Response: $response")
-                    "Response: $response"
-                } else {
-                    "HTTP error code: $responseCode"
-                }
-            }
-        }
-    } catch (e: Exception) {
-        val errorMessage = "Error: ${e.localizedMessage ?: "An unknown error occurred"}"
-        Log.e("sendMQTTConfig", errorMessage, e)
-        errorMessage
-    }
-}
-
-suspend fun getPowerReading(): String {
-    val urlString = "http://192.168.240.238/cm?cmnd=Status%208"
-    return try {
-        Log.d("getPowerReading", "Attempting to send request to $urlString")
-        val url = URL(urlString)
-        withContext(Dispatchers.IO) {
-            with(url.openConnection() as HttpURLConnection) {
-                requestMethod = "GET" // or "POST" if you need to send some data
-                // Set any required headers here
-                Log.d("getPowerReading", "Request method set to $requestMethod")
-
-                // For POST request, write output stream
-                // outputStream.write("Your request body".toByteArray())
-                // outputStream.flush()
-
-                val responseCode = responseCode
-                Log.d("getPowerReading", "Response code: $responseCode")
-                if (responseCode == HttpURLConnection.HTTP_OK) {
-                    val response = inputStream.bufferedReader().use(BufferedReader::readText)
-                    Log.d("getPowerReading", "Response: $response")
-                    "Response: $response"
-                } else {
-                    "HTTP error code: $responseCode"
-                }
-            }
-        }
-    } catch (e: Exception) {
-        val errorMessage = "Error: ${e.localizedMessage ?: "An unknown error occurred"}"
-        Log.e("getPowerReading", errorMessage, e)
-        errorMessage
-    }
-}
-
-
-// code from facto ,c lass used in ip scan functionality
+// code from facto, class used in ip scan functionality
 
 
 class DeviceScanner(private val context: Context) {
@@ -304,7 +339,7 @@ class DeviceScanner(private val context: Context) {
 
                     try {
                         val socket = Socket()
-                        socket.connect(InetSocketAddress(hostAddress, 80), 20) // Increased timeout to 500ms
+                        socket.connect(InetSocketAddress(hostAddress, 80), 40) // Increased timeout to 20ms too little think 40ms is best
                         deviceList.add(hostAddress)
                         socket.close()
                     } catch (e: IOException) {
