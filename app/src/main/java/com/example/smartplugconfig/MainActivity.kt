@@ -133,7 +133,7 @@ class MainViewModel : ViewModel() {
 
     private suspend fun sendWifiConfigInternal(): String {
         //uses default ip for tasmota plug wifi ap
-        val urlString = "http://192.168.4.1/cm?cmnd=Backlog%20SSID1%20Pixel%3B%20Password1%20123456789%20WifiConfig%205"
+        val urlString = "http://192.168.4.1/cm?cmnd=Backlog%20SSID1%20Pixel%3B%20Password1%20intrasonics%20WifiConfig%205%20restart%201"
         return try {
             Log.d("sendWifiConfig", "Attempting to send request to $urlString")
             val url = URL(urlString)
