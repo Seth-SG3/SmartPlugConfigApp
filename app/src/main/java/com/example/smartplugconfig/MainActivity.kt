@@ -1,67 +1,66 @@
 package com.example.smartplugconfig
+//noinspection UsingMaterialAndMaterial3Libraries
+//noinspection UsingMaterialAndMaterial3Libraries
 
+
+import android.Manifest
+import android.annotation.SuppressLint
+import android.content.Context
+import android.content.pm.PackageManager
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
+import android.net.NetworkRequest
+import android.net.wifi.WifiManager
+import android.net.wifi.WifiNetworkSpecifier
+import android.os.AsyncTask
+import android.os.Build
 import android.os.Bundle
+import android.util.Log
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.annotation.RequiresApi
 import androidx.compose.foundation.layout.*
+import androidx.compose.material.*
 import androidx.compose.material3.Button
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
+import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.core.app.ActivityCompat
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.smartplugconfig.ui.theme.SmartPlugConfigTheme
-import android.util.Log
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import org.json.JSONObject
 import java.io.BufferedReader
-import java.net.HttpURLConnection
-import java.net.URL
-import android.content.Context
-import android.net.DhcpInfo
-import android.net.wifi.WifiManager
-import android.os.AsyncTask
-import androidx.compose.ui.platform.LocalContext
 import java.io.IOException
+import java.net.HttpURLConnection
 import java.net.InetSocketAddress
 import java.net.Socket
-import android.Manifest
-import android.content.pm.PackageManager
-import android.os.Build
-import android.widget.Toast
-import androidx.activity.compose.setContent
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.ui.platform.LocalContext
-import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.State
-import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewModelScope
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.unit.dp
-import androidx.compose.foundation.layout.*
-//noinspection UsingMaterialAndMaterial3Libraries
-import androidx.compose.material.*
-import org.json.JSONObject
+import java.net.URL
 
 
 class MainActivity : ComponentActivity() {
+
+    lateinit var wifiManager: WifiManager
+    var mifiNetworks = mutableStateListOf<String>()
+    var plugWifiNetworks = mutableStateListOf<String>()
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
             SmartPlugConfigTheme {
-                SmartPlugConfigApp()
+                SmartPlugConfigApp(activity = this, plugWifiNetworks = plugWifiNetworks)
             }
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
                 if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
@@ -81,14 +80,110 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
+    private fun wifiManagerInitialisation(){
+
+        wifiManager = applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
+    }
+
+    fun initialisation() {
+
+        registerPermissions()
+        wifiManagerInitialisation()
+    }
+
+    // Establishes all necessary permissions for a wifi scan
+    private fun registerPermissions() {
+
+        if (ActivityCompat.checkSelfPermission(       // If location permission isn't granted
+                this,
+                Manifest.permission.ACCESS_FINE_LOCATION
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            val accessFinePermission =
+                registerForActivityResult(ActivityResultContracts.RequestPermission()) {    // Request permission for location
+                    if (it) {   // If permission granted
+
+                        Log.d(  // Sends notification of permission granted
+                            "myWifiManager",
+                            "Location Permission Granted"
+                        )
+
+                    } else {
+                        // Permission is denied
+                        // Show an error message
+                    }
+                }
+            accessFinePermission.launch(Manifest.permission.ACCESS_FINE_LOCATION)
+            return
+        }
+    }
+
+    // Connect to normal wifi
+    @RequiresApi(Build.VERSION_CODES.Q)
+    @SuppressLint("ServiceCast")
+    fun connectToWifi(ssid: String, password: String) {
+
+        val wifiNetworkSpecifier = WifiNetworkSpecifier.Builder()
+            .setSsid(ssid)
+            .setWpa2Passphrase(password)
+            .build()
+
+        val networkRequest = NetworkRequest.Builder()
+            .addTransportType(NetworkCapabilities.TRANSPORT_WIFI)
+            .setNetworkSpecifier(wifiNetworkSpecifier)
+            .build()
+
+        val connectivityManager = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        connectivityManager.requestNetwork(networkRequest, object : ConnectivityManager.NetworkCallback() {
+            override fun onAvailable(network: android.net.Network) {
+                super.onAvailable(network)
+                connectivityManager.bindProcessToNetwork(network)
+                Log.d("WifiConnection", "Connected to $ssid")
+            }
+
+            override fun onUnavailable() {
+                super.onUnavailable()
+                Log.d("WifiConnection", "Connection to $ssid failed")
+            }
+        })
+    }
+
+    // Connect to open wifi (no password) temporary
+    @RequiresApi(Build.VERSION_CODES.Q)
+    fun connectToOpenWifi(ssid: String) {
+        val wifiNetworkSpecifier = WifiNetworkSpecifier.Builder()
+            .setSsid(ssid)
+            .build()
+
+        val networkRequest = NetworkRequest.Builder()
+            .addTransportType(NetworkCapabilities.TRANSPORT_WIFI)
+            .setNetworkSpecifier(wifiNetworkSpecifier)
+            .build()
+
+        val connectivityManager = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        connectivityManager.requestNetwork(networkRequest, object : ConnectivityManager.NetworkCallback() {
+            override fun onAvailable(network: android.net.Network) {
+                super.onAvailable(network)
+                connectivityManager.bindProcessToNetwork(network)
+                Log.d("WifiConnection", "Connected to $ssid")
+            }
+
+            override fun onUnavailable() {
+                super.onUnavailable()
+                Log.d("WifiConnection", "Connection to $ssid failed")
+            }
+        })
+    }
+
 }
 
 
 
 class MainViewModel : ViewModel() {
+
     private val _ipAddress = mutableStateOf<String?>(null)
     val ipAddress: State<String?> = _ipAddress
-
+    var plugWifiNetworks = mutableStateListOf<String>()
     fun setIpAddress(ip: String) {
         _ipAddress.value = ip
     }
@@ -108,10 +203,19 @@ class MainViewModel : ViewModel() {
         })
     }
 
-    fun connectToPlugWifi(): String {
-        // Implement the actual logic here
-        // For now, just return a placeholder string
-        return "Trying to connect to plug WiFi..."
+    @Composable
+    fun connectToPlugWifi(activity: MainActivity, plugWifiNetworks: SnapshotStateList<String>, status: (Int) -> Unit, state: Int): String {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
+            modifier = Modifier.fillMaxSize()
+
+        ) {
+            RefreshWifiButton(activity = activity, status = status, state = state)
+            DisplayPlugNetworks(activity, plugWifiNetworks, status = status)
+            ReturnWifiButton(status = status)
+        }
+        return "Trying to connect to wifi"
     }
 
     fun turnOnHotspot(): String {
@@ -242,7 +346,7 @@ class MainViewModel : ViewModel() {
 
 
 @Composable
-fun SmartPlugConfigApp(viewModel: MainViewModel = viewModel()) {
+fun SmartPlugConfigApp(viewModel: MainViewModel = viewModel(), activity: MainActivity, plugWifiNetworks: SnapshotStateList<String>) {
     var currentTextOutput by remember { mutableStateOf("output") }
     val context = LocalContext.current
 
@@ -250,74 +354,105 @@ fun SmartPlugConfigApp(viewModel: MainViewModel = viewModel()) {
         textToDisplay = currentTextOutput,
         setCurrentTextOutput = { currentTextOutput = it },
         context = context,
-        viewModel = viewModel
+        viewModel = viewModel,
+        activity = activity,
+        plugWifiNetworks = plugWifiNetworks
     )
 }
 
+@SuppressLint("UnrememberedMutableState")
 @Composable
 fun ButtonsWithTextOutput(
     textToDisplay: String,
     setCurrentTextOutput: (String) -> Unit,
     context: Context,
     viewModel: MainViewModel,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    activity: MainActivity,
+    plugWifiNetworks: SnapshotStateList<String>
 ) {
     val coroutineScope = rememberCoroutineScope()
+    var status by remember { mutableIntStateOf(1) }
 
-    Column(
-        modifier = modifier.fillMaxSize().padding(16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Spacer(modifier = Modifier.height(250.dp))
-        Button(onClick = {
-            val result = viewModel.connectToPlugWifi()
-            setCurrentTextOutput(result)
-        }) {
-            Text("Connect to plug")
-        }
-        Spacer(modifier = Modifier.height(20.dp))
-        Button(onClick = {
-            viewModel.sendWifiConfig { result ->
-                setCurrentTextOutput(result)
-            }
-        }) {
-            Text("Send Wifi config")
-        }
-        Spacer(modifier = Modifier.height(20.dp))
-        Button(onClick = {
-            val result = viewModel.turnOnHotspot()
-            setCurrentTextOutput(result)
-        }) {
-            Text("Switch on Hotspot")
-        }
-        Spacer(modifier = Modifier.height(20.dp))
-        Button(onClick = {
-            viewModel.scanDevices(context) { result ->
-                if (result != null) {
-                    setCurrentTextOutput(result)
+    when (status) {
+        1 -> {  //Default gives you all expected options
+
+
+            Column(
+                modifier = modifier.fillMaxSize().padding(16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+
+                Spacer(modifier = Modifier.height(250.dp))
+                Button(onClick = {
+                    Log.d("hi - should be 1", status.toString())
+                    activity.wifiList()
+                    status = 2
+                    Log.d("bye - should be 2", status.toString())
+                }) {
+                    Text("Connect to Plug")
                 }
+                Spacer(modifier = Modifier.height(20.dp))
+                Button(onClick = {
+                    viewModel.sendWifiConfig { result ->
+                        setCurrentTextOutput(result)
+                    }
+                }) {
+                    Text("Send Wifi config")
+                }
+                Spacer(modifier = Modifier.height(20.dp))
+                Button(onClick = {
+                    val result = viewModel.turnOnHotspot()
+                    setCurrentTextOutput(result)
+                }) {
+                    Text("Switch on Hotspot")
+                }
+                Spacer(modifier = Modifier.height(20.dp))
+                Button(onClick = {
+                    viewModel.scanDevices(context) { result ->
+                        if (result != null) {
+                            setCurrentTextOutput(result)
+                        }
+                    }
+                }) {
+                    Text("find IP address of plug")
+                }
+                Spacer(modifier = Modifier.height(20.dp))
+                Button(onClick = {
+                    viewModel.sendMQTTConfig { result ->
+                        setCurrentTextOutput(result)
+                    }
+                }) {
+                    Text("Send MQTT config")
+                }
+                Spacer(modifier = Modifier.height(20.dp))
+                Button(onClick = {
+                    viewModel.getPowerReading { result ->
+                        setCurrentTextOutput(result)
+                    }
+                }) {
+                    Text("Pull power data")
+                }
+                Spacer(modifier = Modifier.height(20.dp))
+                Text(textToDisplay)
             }
-        }) {
-            Text("find IP address of plug")
         }
-        Spacer(modifier = Modifier.height(20.dp))
-        Button(onClick = {
-            viewModel.sendMQTTConfig { result ->
-                setCurrentTextOutput(result)
-            }
-        }) {
-            Text("Send MQTT config")
+
+
+        2 -> {      // Allow connections to the plug wifi
+
+            viewModel.connectToPlugWifi(
+                activity = activity,
+                plugWifiNetworks = plugWifiNetworks,
+                status = { status = it },
+                state = status
+            )
         }
-        Spacer(modifier = Modifier.height(20.dp))
-        Button(onClick = {
-            viewModel.getPowerReading { result ->
-                setCurrentTextOutput(result)
-            }
-        }) {
-            Text("Pull power data")
+        3 -> {
+            status = 2
         }
-        Spacer(modifier = Modifier.height(20.dp))
-        Text(textToDisplay)
+
+        else -> {}
     }
 }
 
@@ -376,5 +511,66 @@ class DeviceScanner(private val context: Context) {
     }
 }
 
+@Composable
+fun DisplayPlugNetworks(activity: MainActivity, plugWifiNetworks: List<String>, status: (Int) -> Unit){
+    Log.d("hi again", "It should be scanning now?")
 
+    // For each network add a button to connect
+    plugWifiNetworks .forEach { ssid ->
+        Button(onClick = {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                activity.connectToOpenWifi(ssid)
+            } else {
+                Log.e("Deprecation", "Android version is older than Android 10")
+            }
+            Log.d("test", "connect_to_jamie_is_trying: $ssid")
+            status(1)
+        }) {
+            Text(ssid)
+        }
+    }
+}
+
+// Adds a button to allow refresh of networks if it doesn't appear
+@Composable
+fun RefreshWifiButton(activity: MainActivity, status: (Int) -> Unit, state: Int) {
+    Button(onClick = {
+        activity.wifiList()
+        status(3)   // Yes I know this is awful code but this sets status to just the else section which has nothing and then back to original to refresh
+    }) {
+        Text("Refresh Networks")
+    }
+}
+
+// Adds a button to allow return to main menu
+@Composable
+fun ReturnWifiButton(status: (Int) -> Unit) {
+    Button(onClick = {
+        status(1)
+    }) {
+        Text("Return to home")
+    }
+}
+
+@SuppressLint("MissingPermission")
+private fun MainActivity.wifiList() {
+    initialisation() // Just checks that permissions are established
+    val wifiFullnfo = wifiManager.scanResults // Find local networks
+
+    // Find just the SSIDs
+    val wifiNetworksList = wifiFullnfo.map { it.SSID }
+    var filteredWifiNetworksList = wifiNetworksList.filter {
+        it.contains("plug", ignoreCase = true) or it.contains(
+            "tasmota",
+            ignoreCase = true
+        )
+    }
+    plugWifiNetworks.clear()
+    plugWifiNetworks.addAll(filteredWifiNetworksList)
+
+    filteredWifiNetworksList = wifiNetworksList.filter { it.contains("4g", ignoreCase = true) }
+    mifiNetworks.clear()
+    mifiNetworks.addAll(filteredWifiNetworksList)
+    Log.d("test", "wifiManager_jamie_is_trying: $plugWifiNetworks")
+}
 
