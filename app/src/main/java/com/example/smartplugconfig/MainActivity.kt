@@ -88,6 +88,10 @@ class MainViewModel : ViewModel() {
     private val _ipAddress = mutableStateOf<String?>(null)
     val ipAddress: State<String?> = _ipAddress
 
+    fun setIpAddress(ip: String) {
+        _ipAddress.value = ip
+    }
+
     fun scanDevices(context: Context, onScanCompleted: (String?) -> Unit) {
         val deviceScanner = DeviceScanner(context)
         deviceScanner.scanDevices(object : DeviceScanner.ScanCallback {
@@ -127,13 +131,14 @@ class MainViewModel : ViewModel() {
     }
 
     private suspend fun sendWifiConfigInternal(): String {
+        //uses default ip for tasmota plug wifi ap
         val urlString = "http://192.168.4.1/cm?cmnd=Backlog%20SSID1%20Pixel%3B%20Password1%20123456789%20WifiConfig%205"
         return try {
             Log.d("sendWifiConfig", "Attempting to send request to $urlString")
             val url = URL(urlString)
             withContext(Dispatchers.IO) {
                 with(url.openConnection() as HttpURLConnection) {
-                    requestMethod = "GET" // or "POST" if you need to send some data
+                    requestMethod = "GET"
                     Log.d("sendWifiConfig", "Request method set to $requestMethod")
 
                     val responseCode = responseCode
@@ -161,13 +166,14 @@ class MainViewModel : ViewModel() {
     }
 
     private suspend fun sendMQTTConfigInternal(): String {
-        val urlString = "http://192.168.240.238/cm?cmnd=Backlog%20MqttHost%20testHost%3B%20MqttUser%20Test1%3B%20MqttPassword%20Test2%3B%20Topic%20smartPlugTest"
+        val ip = _ipAddress.value
+        val urlString = "http://${ip}/cm?cmnd=Backlog%20MqttHost%20testHost%3B%20MqttUser%20Test1%3B%20MqttPassword%20Test2%3B%20Topic%20smartPlugTest"
         return try {
             Log.d("sendMQTTConfig", "Attempting to send request to $urlString")
             val url = URL(urlString)
             withContext(Dispatchers.IO) {
                 with(url.openConnection() as HttpURLConnection) {
-                    requestMethod = "GET" // or "POST" if you need to send some data
+                    requestMethod = "GET"
                     Log.d("sendMQTTConfig", "Request method set to $requestMethod")
 
                     val responseCode = responseCode
@@ -196,13 +202,14 @@ class MainViewModel : ViewModel() {
     }
 
     private suspend fun getPowerReadingInternal(): String {
-        val urlString = "http://192.168.240.238/cm?cmnd=Status%208"
+        val ip = _ipAddress.value
+        val urlString = "http://${ip}/cm?cmnd=Status%208"
         return try {
             Log.d("getPowerReading", "Attempting to send request to $urlString")
             val url = URL(urlString)
             withContext(Dispatchers.IO) {
                 with(url.openConnection() as HttpURLConnection) {
-                    requestMethod = "GET" // or "POST" if you need to send some data
+                    requestMethod = "GET"
                     Log.d("getPowerReading", "Request method set to $requestMethod")
 
                     val responseCode = responseCode
