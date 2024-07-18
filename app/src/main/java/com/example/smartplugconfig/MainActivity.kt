@@ -52,6 +52,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.layout.*
 //noinspection UsingMaterialAndMaterial3Libraries
 import androidx.compose.material.*
+import org.json.JSONObject
 
 
 class MainActivity : ComponentActivity() {
@@ -217,7 +218,15 @@ class MainViewModel : ViewModel() {
                     if (responseCode == HttpURLConnection.HTTP_OK) {
                         val response = inputStream.bufferedReader().use(BufferedReader::readText)
                         Log.d("getPowerReading", "Response: $response")
-                        "Response: $response"
+
+                        // Parse the JSON response
+                        val jsonObject = JSONObject(response)
+                        val statusSNS = jsonObject.getJSONObject("StatusSNS")
+                        val energy = statusSNS.getJSONObject("ENERGY")
+                        val power = energy.getInt("Power")
+
+                        // Return the formatted string
+                        "Power: $power Watts"
                     } else {
                         "HTTP error code: $responseCode"
                     }
