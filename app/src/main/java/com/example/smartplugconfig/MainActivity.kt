@@ -53,6 +53,8 @@ import androidx.compose.foundation.layout.*
 //noinspection UsingMaterialAndMaterial3Libraries
 import androidx.compose.material.*
 import org.json.JSONObject
+import android.content.Intent
+import android.provider.Settings
 
 
 class MainActivity : ComponentActivity() {
@@ -108,16 +110,33 @@ class MainViewModel : ViewModel() {
         })
     }
 
-    fun connectToPlugWifi(): String {
-        // Implement the actual logic here
-        // For now, just return a placeholder string
-        return "Trying to connect to plug WiFi..."
+    fun connectToPlugWifi(context: Context): String {
+        // Create an Intent to open the Wi-Fi settings
+        val intent = Intent(Settings.ACTION_WIFI_SETTINGS)
+
+        // Check if there is an activity that can handle this intent
+        if (intent.resolveActivity(context.packageManager) != null) {
+            // Start the settings activity
+            context.startActivity(intent)
+            return "Opening Wi-Fi settings..."
+        } else {
+            return "Unable to open Wi-Fi settings."
+        }
     }
 
-    fun turnOnHotspot(): String {
-        // Implement the actual logic here
-        // For now, just return a placeholder string
-        return "Turning on hotspot..."
+
+    fun turnOnHotspot(context: Context): String {
+        // Create an Intent to open the hotspot settings
+        val intent = Intent(Settings.ACTION_WIRELESS_SETTINGS)
+
+        // Check if there is an activity that can handle this intent
+        if (intent.resolveActivity(context.packageManager) != null) {
+            // Start the settings activity
+            context.startActivity(intent)
+            return "Opening hotspot settings..."
+        } else {
+            return "Unable to open hotspot settings."
+        }
     }
 
     fun ipScan(): String {
@@ -262,15 +281,13 @@ fun ButtonsWithTextOutput(
     viewModel: MainViewModel,
     modifier: Modifier = Modifier
 ) {
-    val coroutineScope = rememberCoroutineScope()
-
     Column(
         modifier = modifier.fillMaxSize().padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Spacer(modifier = Modifier.height(250.dp))
         Button(onClick = {
-            val result = viewModel.connectToPlugWifi()
+            val result = viewModel.connectToPlugWifi(context)
             setCurrentTextOutput(result)
         }) {
             Text("Connect to plug")
@@ -285,7 +302,7 @@ fun ButtonsWithTextOutput(
         }
         Spacer(modifier = Modifier.height(20.dp))
         Button(onClick = {
-            val result = viewModel.turnOnHotspot()
+            val result = viewModel.turnOnHotspot(context)
             setCurrentTextOutput(result)
         }) {
             Text("Switch on Hotspot")
@@ -296,6 +313,7 @@ fun ButtonsWithTextOutput(
                 if (result != null) {
                     setCurrentTextOutput(result)
                 }
+                result?.let { ip -> viewModel.setIpAddress(ip) } // Set the IP address in the ViewModel.
             }
         }) {
             Text("find IP address of plug")
