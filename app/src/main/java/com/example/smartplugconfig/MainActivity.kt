@@ -1,6 +1,4 @@
 package com.example.smartplugconfig
-//noinspection UsingMaterialAndMaterial3Libraries
-//noinspection UsingMaterialAndMaterial3Libraries
 
 
 import android.Manifest
@@ -37,11 +35,19 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.smartplugconfig.ui.theme.SmartPlugConfigTheme
+import android.util.Log
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import java.io.BufferedReader
+import java.net.HttpURLConnection
+import java.net.URL
+import android.content.Context
+import android.net.DhcpInfo
+import android.net.wifi.WifiManager
+import android.os.AsyncTask
+import androidx.compose.ui.platform.LocalContext
 import java.io.IOException
 import java.net.HttpURLConnection
 import java.net.InetSocketAddress
@@ -218,10 +224,19 @@ class MainViewModel : ViewModel() {
         return "Trying to connect to wifi"
     }
 
-    fun turnOnHotspot(): String {
-        // Implement the actual logic here
-        // For now, just return a placeholder string
-        return "Turning on hotspot..."
+
+    fun turnOnHotspot(context: Context): String {
+        // Create an Intent to open the hotspot settings
+        val intent = Intent(Settings.ACTION_WIRELESS_SETTINGS)
+
+        // Check if there is an activity that can handle this intent
+        if (intent.resolveActivity(context.packageManager) != null) {
+            // Start the settings activity
+            context.startActivity(intent)
+            return "Opening hotspot settings..."
+        } else {
+            return "Unable to open hotspot settings."
+        }
     }
 
     fun ipScan(): String {
@@ -237,7 +252,7 @@ class MainViewModel : ViewModel() {
 
     private suspend fun sendWifiConfigInternal(): String {
         //uses default ip for tasmota plug wifi ap
-        val urlString = "http://192.168.4.1/cm?cmnd=Backlog%20SSID1%20Pixel%3B%20Password1%20123456789%20WifiConfig%205"
+        val urlString = "http://192.168.4.1/cm?cmnd=Backlog%20SSID1%20Pixel%3B%20Password1%20intrasonics%3B%20WifiConfig%205%3B%20restart%201"
         return try {
             Log.d("sendWifiConfig", "Attempting to send request to $urlString")
             val url = URL(urlString)
@@ -360,7 +375,6 @@ fun SmartPlugConfigApp(viewModel: MainViewModel = viewModel(), activity: MainAct
     )
 }
 
-@SuppressLint("UnrememberedMutableState")
 @Composable
 fun ButtonsWithTextOutput(
     textToDisplay: String,
@@ -402,7 +416,7 @@ fun ButtonsWithTextOutput(
                 }
                 Spacer(modifier = Modifier.height(20.dp))
                 Button(onClick = {
-                    val result = viewModel.turnOnHotspot()
+                    val result = viewModel.turnOnHotspot(context)
                     setCurrentTextOutput(result)
                 }) {
                     Text("Switch on Hotspot")
@@ -413,6 +427,8 @@ fun ButtonsWithTextOutput(
                         if (result != null) {
                             setCurrentTextOutput(result)
                         }
+                        result?.let { ip -> viewModel.setIpAddress(ip) } // Set the IP address in the ViewModel.
+
                     }
                 }) {
                     Text("find IP address of plug")
