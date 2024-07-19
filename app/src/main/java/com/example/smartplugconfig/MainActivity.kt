@@ -35,7 +35,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.PixelMap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -152,9 +151,7 @@ class MainViewModel : ViewModel() {
 
     private suspend fun sendWifiConfigInternal(): String {
         //uses default ip for tasmota plug wifi ap
-        val ssid = "Pixel"
-        val password = "Intrasonics"
-        val urlString = "http://192.168.4.1/cm?cmnd=Backlog%20SSID1%20$ssid%3B%20Password1%20$password%3B%20WifiConfig%205%3B%20restart%201"
+        val urlString = "http://192.168.4.1/cm?cmnd=Backlog%20SSID1%20Pixel%3B%20Password1%20intrasonics%3B%20WifiConfig%205%3B%20restart%201"
         return try {
             Log.d("sendWifiConfig", "Attempting to send request to $urlString")
             val url = URL(urlString)
