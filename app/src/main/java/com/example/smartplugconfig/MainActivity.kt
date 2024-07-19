@@ -50,7 +50,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -70,11 +70,21 @@ import java.net.URL
 
 class MainActivity : ComponentActivity() {
 
+    private val requiredPermissions = arrayOf(     // Any required permissions
+        Manifest.permission.CHANGE_WIFI_STATE,
+        Manifest.permission.ACCESS_FINE_LOCATION,
+        Manifest.permission.ACCESS_WIFI_STATE,
+        Manifest.permission.NEARBY_WIFI_DEVICES
+    )
+
     lateinit var wifiManager: WifiManager
     var mifiNetworks = mutableStateListOf<String>()
     var plugWifiNetworks = mutableStateListOf<String>()
+    private var hotspotReservation: WifiManager.LocalOnlyHotspotReservation? = null
 
+    @RequiresApi(Build.VERSION_CODES.O)
     override fun onCreate(savedInstanceState: Bundle?) {
+        initialisation()
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
@@ -101,40 +111,54 @@ class MainActivity : ComponentActivity() {
         }
     }
     private fun wifiManagerInitialisation(){
-
         wifiManager = applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
-    }
+        }
 
-    fun initialisation() {
-
-        registerPermissions()
+    private fun initialisation() {
         wifiManagerInitialisation()
+        checkAndRequestPermissions()
+
     }
+    fun turnOnWifi(context: Context): String {
+        // Create an Intent to open the hotspot settings
+        val intent = Intent(Settings.ACTION_WIRELESS_SETTINGS)
 
-    // Establishes all necessary permissions for a wifi scan
-    private fun registerPermissions() {
+        // Check if there is an activity that can handle this intent
+        if (intent.resolveActivity(context.packageManager) != null) {
+            // Start the settings activity
+            context.startActivity(intent)
+            return "Opening wifi settings..."
+        } else {
+            return "Unable to open wifi settings."
+        }
+    }
+// Establishes all necessary permissions for a wifi scan
+    private val requestPermissionsLauncher =
+        registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { permissions ->
+            val allPermissionsGranted = permissions.entries.all { it.value }
+            if (allPermissionsGranted) {
+                Toast.makeText(this, "All permissions granted!", Toast.LENGTH_SHORT).show()
+                // Return back to code
 
-        if (ActivityCompat.checkSelfPermission(       // If location permission isn't granted
-                this,
-                Manifest.permission.ACCESS_FINE_LOCATION
-            ) != PackageManager.PERMISSION_GRANTED
-        ) {
-            val accessFinePermission =
-                registerForActivityResult(ActivityResultContracts.RequestPermission()) {    // Request permission for location
-                    if (it) {   // If permission granted
+            } else {
+                Toast.makeText(
+                    this,
+                    "All permissions are required to start the hotspot",
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
+        }
 
-                        Log.d(  // Sends notification of permission granted
-                            "myWifiManager",
-                            "Location Permission Granted"
-                        )
+    private fun checkAndRequestPermissions() {
+        val permissionsNeeded = requiredPermissions.filter {
+            ContextCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED
+        }
 
-                    } else {
-                        // Permission is denied
-                        // Show an error message
-                    }
-                }
-            accessFinePermission.launch(Manifest.permission.ACCESS_FINE_LOCATION)
-            return
+        if (permissionsNeeded.isNotEmpty()) {
+            requestPermissionsLauncher.launch(permissionsNeeded.toTypedArray())
+        } else {
+            Toast.makeText(this, "All permissions already granted!", Toast.LENGTH_SHORT).show()
+            // Return back to code
         }
     }
 
@@ -195,6 +219,48 @@ class MainActivity : ComponentActivity() {
         })
     }
 
+
+    @Suppress("DEPRECATION")
+    @SuppressLint("MissingPermission")
+    @RequiresApi(Build.VERSION_CODES.O)
+    fun startLocalOnlyHotspot() {
+        wifiManager.startLocalOnlyHotspot(object : WifiManager.LocalOnlyHotspotCallback() {
+            override fun onStarted(reservation: WifiManager.LocalOnlyHotspotReservation) {
+                super.onStarted(reservation)
+                hotspotReservation = reservation
+                val config = reservation.wifiConfiguration
+                config?.let { config ->
+                    Toast.makeText(
+                        this@MainActivity,
+                        " SSID=${config.SSID} Password=${config.preSharedKey}",
+                        Toast.LENGTH_LONG
+                    ).show()
+                } ?: run {
+                    Toast.makeText(
+                        this@MainActivity,
+                        "Hotspot started, but configuration is null",
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
+            }
+
+            override fun onStopped() {
+                super.onStopped()
+                Toast.makeText(this@MainActivity, "Hotspot stopped", Toast.LENGTH_SHORT).show()
+            }
+
+            override fun onFailed(reason: Int) {
+                super.onFailed(reason)
+                Toast.makeText(this@MainActivity, "Hotspot failed to start: $reason", Toast.LENGTH_SHORT).show()
+            }
+        }, null)
+    }
+
+    @RequiresApi(Build.VERSION_CODES.O)
+    override fun onDestroy() {
+        super.onDestroy()
+        hotspotReservation?.close()
+    }
 }
 
 
@@ -222,8 +288,9 @@ class MainViewModel : ViewModel() {
         })
     }
 
+    @RequiresApi(Build.VERSION_CODES.Q)
     @Composable
-    fun connectToPlugWifi(activity: MainActivity, plugWifiNetworks: SnapshotStateList<String>, status: (Int) -> Unit, state: Int): String {
+    fun connectToPlugWifi(activity: MainActivity, plugWifiNetworks: SnapshotStateList<String>, status: (Int) -> Unit): String {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
@@ -231,16 +298,17 @@ class MainViewModel : ViewModel() {
 
         ) {
             RefreshWifiButton(activity = activity, status = status)
-            DisplayPlugNetworks(activity, plugWifiNetworks, status = status)
+            activity.DisplayPlugNetworks(activity, plugWifiNetworks, status = status)
             ReturnWifiButton(status = status)
         }
         return "Trying to connect to wifi"
     }
 
 
-    fun turnOnHotspot(context: Context): String {
+    @RequiresApi(Build.VERSION_CODES.O)
+    fun turnOnHotspot(context: Context, activity: MainActivity): String {
         // Create an Intent to open the hotspot settings
-        val intent = Intent(Settings.ACTION_WIRELESS_SETTINGS)
+       val intent = Intent(Settings.ACTION_WIRELESS_SETTINGS)
 
         // Check if there is an activity that can handle this intent
         if (intent.resolveActivity(context.packageManager) != null) {
@@ -250,9 +318,18 @@ class MainViewModel : ViewModel() {
         } else {
             return "Unable to open hotspot settings."
         }
+
+        //This here is a test for how to connect through a local only hotspot. I have no idea if there is any
+        //Practical way to use it as we only find out the ssid and password after creation
+//        if()
+//        activity.startLocalHotspot()
+
+
+
+        return ("Turning on Hotspot")
     }
 
-    fun ipScan(): String {
+fun ipScan(): String {
         return "Scanning for IP Address..."
     }
 
@@ -373,6 +450,7 @@ class MainViewModel : ViewModel() {
 }
 
 
+@RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun SmartPlugConfigApp(viewModel: MainViewModel = viewModel(), activity: MainActivity, plugWifiNetworks: SnapshotStateList<String>) {
     var currentTextOutput by remember { mutableStateOf("output") }
@@ -389,6 +467,7 @@ fun SmartPlugConfigApp(viewModel: MainViewModel = viewModel(), activity: MainAct
 }
 
 
+@RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun ButtonsWithTextOutput(
     textToDisplay: String,
@@ -450,7 +529,7 @@ fun ButtonsWithTextOutput(
                 }
                 Spacer(modifier = Modifier.height(20.dp))
                 Button(onClick = {
-                    val result = viewModel.turnOnHotspot(context)
+                    val result = viewModel.turnOnHotspot(context, activity = activity)
                     setCurrentTextOutput(result)
                 },
                     colors = ButtonDefaults.buttonColors(containerColor = ipsosBlue) // Set button color
@@ -508,12 +587,10 @@ fun ButtonsWithTextOutput(
 
 
         2 -> {      // Allow connections to the plug wifi
-
             viewModel.connectToPlugWifi(
                 activity = activity,
                 plugWifiNetworks = plugWifiNetworks,
                 status = { status = it },
-                state = status
             )
         }
         3 -> {
@@ -581,17 +658,25 @@ class DeviceScanner(private val context: Context) {
     }
 }
 
+@RequiresApi(Build.VERSION_CODES.Q)
 @Composable
-fun DisplayPlugNetworks(activity: MainActivity, plugWifiNetworks: List<String>, status: (Int) -> Unit){
+fun MainActivity.DisplayPlugNetworks(activity: MainActivity, plugWifiNetworks: List<String>, status: (Int) -> Unit){
     Log.d("hi again", "It should be scanning now?")
 
     // For each network add a button to connect
     plugWifiNetworks .forEach { ssid ->
         Button(onClick = {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            if(wifiManager.isWifiEnabled){
                 activity.connectToOpenWifi(ssid)
-            } else {
-                Log.e("Deprecation", "Android version is older than Android 10")
+                Log.d("Initialise", "WiFi is turned on, connecting to plug")
+            }else{
+                Toast.makeText(
+                    this,
+                    "WiFi must be turned on",
+                    Toast.LENGTH_LONG
+                ).show()
+                val result = turnOnWifi(this)
+                Log.d("Initialise", result)
             }
             Log.d("test", "connect_to_jamie_is_trying: $ssid")
             status(1)
@@ -624,7 +709,7 @@ fun ReturnWifiButton(status: (Int) -> Unit) {
 
 @SuppressLint("MissingPermission")
 private fun MainActivity.wifiList() {
-    initialisation() // Just checks that permissions are established
+
     val wifiFullnfo = wifiManager.scanResults // Find local networks
 
     // Find just the SSIDs
@@ -644,3 +729,8 @@ private fun MainActivity.wifiList() {
     Log.d("test", "wifiManager_jamie_is_trying: $plugWifiNetworks")
 }
 
+@RequiresApi(Build.VERSION_CODES.O)
+private fun MainActivity.startLocalHotspot(){
+
+    startLocalOnlyHotspot()
+}
