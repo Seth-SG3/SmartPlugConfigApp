@@ -70,5 +70,8 @@ dependencies {
     implementation (libs.kotlinx.coroutines.android)
     implementation (libs.androidx.lifecycle.viewmodel.compose)
     implementation (libs.okhttp)
+    implementation(libs.kmqtt.common.jvm)
+    implementation(libs.kmqtt.client.jvm)
+    implementation(libs.kmqtt.broker.jvm)
 
 }

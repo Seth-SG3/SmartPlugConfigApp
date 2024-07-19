@@ -21,7 +21,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Text
@@ -151,7 +150,9 @@ class MainViewModel : ViewModel() {
 
     private suspend fun sendWifiConfigInternal(): String {
         //uses default ip for tasmota plug wifi ap
-        val urlString = "http://192.168.4.1/cm?cmnd=Backlog%20SSID1%20Pixel%3B%20Password1%20intrasonics%3B%20WifiConfig%205%3B%20restart%201"
+        val ssid = "Pixel"  //setting up ssid and password for hotspot
+        val password = "Intrasonics"    //could be easily changed to mifi credentials if tht route is preferred
+        val urlString = "http://192.168.4.1/cm?cmnd=Backlog%20SSID1%20$ssid%3B%20Password1%20$password%3B%20WifiConfig%205%3B%20restart%201"
         return try {
             Log.d("sendWifiConfig", "Attempting to send request to $urlString")
             val url = URL(urlString)
@@ -186,7 +187,10 @@ class MainViewModel : ViewModel() {
 
     private suspend fun sendMQTTConfigInternal(): String {
         val ip = _ipAddress.value
-        val urlString = "http://${ip}/cm?cmnd=Backlog%20MqttHost%20testHost%3B%20MqttUser%20Test1%3B%20MqttPassword%20Test2%3B%20Topic%20smartPlugTest"
+        val host = "192.168.245.252"  //test values for mqtt broker app on my phone, still not working
+        val topic = "smartPlugTest"
+
+        val urlString = "http://${ip}/cm?cmnd=Backlog%20MqttHost%20$host%3B%20MqttUser%20Test1%3B%20MqttPassword%20Test2%3B%20Topic%20$topic"
         return try {
             Log.d("sendMQTTConfig", "Attempting to send request to $urlString")
             val url = URL(urlString)
