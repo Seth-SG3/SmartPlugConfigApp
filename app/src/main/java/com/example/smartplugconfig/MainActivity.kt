@@ -303,7 +303,7 @@ fun ButtonsWithTextOutput(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .padding(16.dp)
+            //.padding(16.dp)
             .background(ipsosGreen), // Set green background
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
