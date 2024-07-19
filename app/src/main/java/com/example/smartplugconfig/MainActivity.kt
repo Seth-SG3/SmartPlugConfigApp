@@ -12,6 +12,15 @@ import android.net.wifi.WifiManager
 import android.net.wifi.WifiNetworkSpecifier
 import android.os.AsyncTask
 import android.os.Build
+//noinspection UsingMaterialAndMaterial3Libraries
+import android.Manifest
+import android.annotation.SuppressLint
+import android.content.Context
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.net.wifi.WifiManager
+import android.os.AsyncTask
+import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
 import android.util.Log
@@ -27,7 +36,14 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.State
@@ -39,16 +55,31 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshots.SnapshotStateList
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.State
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.app.ActivityCompat
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.compose.ui.unit.sp
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.smartplugconfig.ui.theme.SmartPlugConfigTheme
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
@@ -192,9 +223,9 @@ class MainActivity : ComponentActivity() {
 
 
 class MainViewModel : ViewModel() {
-
     private val _ipAddress = mutableStateOf<String?>(null)
     val ipAddress: State<String?> = _ipAddress
+
     fun setIpAddress(ip: String) {
         _ipAddress.value = ip
     }
@@ -380,6 +411,7 @@ fun SmartPlugConfigApp(viewModel: MainViewModel = viewModel(), activity: MainAct
     )
 }
 
+
 @Composable
 fun ButtonsWithTextOutput(
     textToDisplay: String,
@@ -392,14 +424,32 @@ fun ButtonsWithTextOutput(
 ) {
     val coroutineScope = rememberCoroutineScope()
     var status by remember { mutableIntStateOf(1) }
-
+    val ipsosBlue = Color(0xFF0033A0) // Ipsos Blue color
+    val ipsosGreen = Color(0xFF00B140) // Ipsos Green color
+    var isScanning by remember { mutableStateOf(false) }
+    var loadingText by remember { mutableStateOf("Scanning") }
+    // LaunchedEffect to animate the loading text
+    LaunchedEffect(isScanning) {
+        while (isScanning) {
+            loadingText = "Scanning"
+            delay(500)
+            loadingText = "Scanning."
+            delay(500)
+            loadingText = "Scanning.."
+            delay(500)
+            loadingText = "Scanning..."
+            delay(500)
+        }
+    }
     when (status) {
         1 -> {  //Default gives you all expected options
 
 
             Column(
-                modifier = modifier.fillMaxSize().padding(16.dp),
+                modifier = modifier.fillMaxSize().padding(16.dp).background(ipsosGreen), // Set green background
+                
                 horizontalAlignment = Alignment.CenterHorizontally
+                
             ) {
 
                 Spacer(modifier = Modifier.height(250.dp))
@@ -408,74 +458,79 @@ fun ButtonsWithTextOutput(
                     activity.wifiList()
                     status = 2
                     Log.d("bye - should be 2", status.toString())
-                }) {
-                    Text("Connect to Plug")
+                },
+                    colors = ButtonDefaults.buttonColors(containerColor = ipsosBlue) // Set button color
+                ) {
+                    Text("Connect to Plug", color = Color.White)
                 }
                 Spacer(modifier = Modifier.height(20.dp))
                 Button(onClick = {
                     viewModel.sendWifiConfig { result ->
                         setCurrentTextOutput(result)
                     }
-                }) {
-                    Text("Send Wifi config")
+                },            colors = ButtonDefaults.buttonColors(containerColor = ipsosBlue) // Set button color
+                ) {
+                    Text("Send Wifi config", color = Color.White)
                 }
                 Spacer(modifier = Modifier.height(20.dp))
                 Button(onClick = {
                     val result = viewModel.turnOnHotspot(context)
                     setCurrentTextOutput(result)
-                }) {
-                    Text("Switch on Hotspot")
+                },
+                    colors = ButtonDefaults.buttonColors(containerColor = ipsosBlue) // Set button color
+                ) {
+                    Text("Switch on Hotspot", color = Color.White)
                 }
                 Spacer(modifier = Modifier.height(20.dp))
-                Button(onClick = {
+                Button(
+                    onClick = {
+                    isScanning = true
                     viewModel.scanDevices(context) { result ->
+                        isScanning = false
                         if (result != null) {
                             setCurrentTextOutput(result)
                         }
                         result?.let { ip -> viewModel.setIpAddress(ip) } // Set the IP address in the ViewModel.
 
                     }
-                }) {
-                    Text("find IP address of plug")
+                },
+                    colors = ButtonDefaults.buttonColors(containerColor = ipsosBlue) // Set button color
+                ) {
+                    Text("Find IP address of plug", color = Color.White)
                 }
                 Spacer(modifier = Modifier.height(20.dp))
-                Button(onClick = {
+                Button(
+                    onClick = {
                     viewModel.sendMQTTConfig { result ->
                         setCurrentTextOutput(result)
                     }
-                }) {
-                    Text("Send MQTT config")
+                },
+                    colors = ButtonDefaults.buttonColors(containerColor = ipsosBlue)
+                ) {
+                    Text("Send MQTT config", color = Color.White)
                 }
                 Spacer(modifier = Modifier.height(20.dp))
-                Button(onClick = {
+                Button(
+                    onClick = {
                     viewModel.getPowerReading { result ->
                         setCurrentTextOutput(result)
                     }
-                }) {
-                    Text("Pull power data")
+                },
+                    colors = ButtonDefaults.buttonColors(containerColor = ipsosBlue)
+                ) {
+                    Text("Pull power data", color = Color.White)
                 }
                 Spacer(modifier = Modifier.height(20.dp))
-                Text(textToDisplay)
+                Text(
+                    text = if (isScanning) loadingText else textToDisplay,
+                    fontSize = 20.sp, // Increase text size
+                    fontWeight = FontWeight.Bold, // Make text bold
+                    color = Color.Black // Text color
+                )
             }
         }
-
-
-        2 -> {      // Allow connections to the plug wifi
-
-            viewModel.connectToPlugWifi(
-                activity = activity,
-                plugWifiNetworks = plugWifiNetworks,
-                status = { status = it },
-                state = status
-            )
+            }
         }
-        3 -> {
-            status = 2
-        }
-
-        else -> {}
-    }
-}
 
 
 
@@ -488,6 +543,7 @@ class DeviceScanner(private val context: Context) {
         ScanTask(callback).execute()
     }
 
+    @SuppressLint("StaticFieldLeak")
     inner class ScanTask(private val callback: ScanCallback?) : AsyncTask<Void, Void, List<String>>() {
         @Deprecated("Deprecated in Java")
         override fun doInBackground(vararg params: Void?): List<String> {
