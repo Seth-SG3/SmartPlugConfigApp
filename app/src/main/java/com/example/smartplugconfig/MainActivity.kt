@@ -150,8 +150,8 @@ class MainViewModel : ViewModel() {
 
     private suspend fun sendWifiConfigInternal(): String {
         //uses default ip for tasmota plug wifi ap
-        val ssid = "Pixel"  //setting up ssid and password for hotspot
-        val password = "Intrasonics"    //could be easily changed to mifi credentials if tht route is preferred
+        val ssid = "Pixel"
+        val password = "intrasonics"
         val urlString = "http://192.168.4.1/cm?cmnd=Backlog%20SSID1%20$ssid%3B%20Password1%20$password%3B%20WifiConfig%205%3B%20restart%201"
         return try {
             Log.d("sendWifiConfig", "Attempting to send request to $urlString")
