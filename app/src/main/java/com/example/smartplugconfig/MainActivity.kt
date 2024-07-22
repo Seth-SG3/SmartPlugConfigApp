@@ -317,24 +317,21 @@ class MainViewModel : ViewModel() {
                 .background(Color(0xFF00B140))
 
         ) {
-            RefreshWifiButton(activity = activity, status = status)
+            RefreshMifiButton(activity = activity, status = status)
             activity.DisplayMifiNetworks(activity, status = status)
             ReturnWifiButton(status = status)
         }
     }
 
-    fun ConnectPlugToMifi(activity: MainActivity, status: (Int) -> Unit, password: String) {
+    fun ConnectPlugToMifi(activity: MainActivity, status: (Int) -> Unit, ssid: String, password: String) {
         if (activity.mifiNetworks.size == 1) {
-            val mifiSsid = activity.mifiNetworks.single()
-            this.sendWifiConfig(
-                mifiSsid,
-                password){
+            this.sendWifiConfig(ssid, password){
                 result -> if (result.contains("error", ignoreCase = true)){
                     Log.e("Error", "Couldn't connect plug to MiFi")
                     status(1)
                 }else{
                     Log.d("Success", "Plug and MiFi are connected")
-                    status(6)
+                    status(7)
             }
             }
         }else{
@@ -646,8 +643,11 @@ fun ButtonsWithTextOutput(
                status = {status = it})
 
            }
+        5 ->{
+            status = 4
+        }
 
-        5 -> {
+        6 -> {
             // Send plug the mifi details
 
 
@@ -657,16 +657,27 @@ fun ButtonsWithTextOutput(
                 fontWeight = FontWeight.Bold, // Make text bold
                 color = Color.Black // Text color
             )
+            val mifiSsid = activity.mifiNetworks.single()
             viewModel.ConnectPlugToMifi(
                 activity = activity,
                 status =  {status = it},
+                ssid = mifiSsid,
                 password = "1234567890"
             )
 
 
         }
-        5 -> {
+        7 -> {
             // Connect to mifi device
+            Text(
+                text = "Connecting phone to MiFi device",
+                fontSize = 20.sp, // Increase text size
+                fontWeight = FontWeight.Bold, // Make text bold
+                color = Color.Black // Text color
+            )
+            val mifiSsid = activity.mifiNetworks.single()
+
+            activity.connectToWifi(ssid = mifiSsid, password = "1234567890")
 
         }
 
@@ -773,6 +784,18 @@ fun RefreshWifiButton(activity: MainActivity, status: (Int) -> Unit) {
     }
 }
 
+// Adds a button to allow refresh of networks if it doesn't appear
+@Composable
+fun RefreshMifiButton(activity: MainActivity, status: (Int) -> Unit) {
+    Button(onClick = {
+        activity.wifiList()
+        status(5)   // Sends to section where it then goes back
+    },colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0033A0))) {
+        Text("Refresh Networks", color = Color.White)
+    }
+}
+
+
 // Adds a button to allow return to main menu
 @Composable
 fun ReturnWifiButton(status: (Int) -> Unit) {
@@ -793,7 +816,7 @@ fun MainActivity.DisplayMifiNetworks(activity: MainActivity, status: (Int) -> Un
         Button(onClick = {
             mifiNetworks.clear()
             mifiNetworks.add(ssid)
-            status(5)
+            status(6)
         },colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0033A0))) {
             Text(ssid, color = Color.White)
         }
