@@ -294,7 +294,9 @@ class MainViewModel : ViewModel() {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
-            modifier = Modifier.fillMaxSize().background(Color(0xFF00B140))
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color(0xFF00B140))
 
         ) {
             RefreshWifiButton(activity = activity, status = status)
@@ -303,6 +305,43 @@ class MainViewModel : ViewModel() {
         }
         return "Trying to connect to wifi"
     }
+
+    @RequiresApi(Build.VERSION_CODES.Q)
+    @Composable
+    fun ChooseMifiNetwork(activity: MainActivity, status: (Int) -> Unit) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color(0xFF00B140))
+
+        ) {
+            RefreshWifiButton(activity = activity, status = status)
+            activity.DisplayMifiNetworks(activity, status = status)
+            ReturnWifiButton(status = status)
+        }
+    }
+
+    fun ConnectPlugToMifi(activity: MainActivity, status: (Int) -> Unit, password: String) {
+        if (activity.mifiNetworks.size == 1) {
+            val mifiSsid = activity.mifiNetworks.single()
+            this.sendWifiConfig(
+                mifiSsid,
+                password){
+                result -> if (result.contains("error", ignoreCase = true)){
+                    Log.e("Error", "Couldn't connect plug to MiFi")
+                    status(1)
+                }else{
+                    Log.d("Success", "Plug and MiFi are connected")
+                    status(6)
+            }
+            }
+        }else{
+            Log.e("Error", "Length of MiFi should be one")
+        }
+    }
+
 
 
     @RequiresApi(Build.VERSION_CODES.O)
@@ -333,16 +372,17 @@ fun ipScan(): String {
         return "Scanning for IP Address..."
     }
 
-    fun sendWifiConfig(onResult: (String) -> Unit) {
+    fun sendWifiConfig( ssid: String = "Pixel", password: String = "intrasonics",onResult: (String) -> Unit) {
         viewModelScope.launch {
-            val result = sendWifiConfigInternal()
+            val result = sendWifiConfigInternal(ssid, password)
             onResult(result)
         }
     }
 
-    private suspend fun sendWifiConfigInternal(): String {
+
+    private suspend fun sendWifiConfigInternal(ssid: String, password: String): String {
         //uses default ip for tasmota plug wifi ap
-        val urlString = "http://192.168.4.1/cm?cmnd=Backlog%20SSID1%20Pixel%3B%20Password1%20intrasonics%3B%20WifiConfig%205%3B%20restart%201"
+        val urlString = "http://192.168.4.1/cm?cmnd=Backlog%20SSID1%20${ssid}%3B%20Password1%20${password}%3B%20WifiConfig%205%3B%20restart%201"
         return try {
             Log.d("sendWifiConfig", "Attempting to send request to $urlString")
             val url = URL(urlString)
@@ -502,7 +542,10 @@ fun ButtonsWithTextOutput(
 
 
             Column(
-                modifier = modifier.fillMaxSize().padding(0.dp).background(ipsosGreen), // Set green background
+                modifier = modifier
+                    .fillMaxSize()
+                    .padding(0.dp)
+                    .background(ipsosGreen), // Set green background
                 horizontalAlignment = Alignment.CenterHorizontally
                 
             ) {
@@ -596,6 +639,37 @@ fun ButtonsWithTextOutput(
         3 -> {
             status = 2
         }
+        4 -> {
+            // Choose MiFi Network
+           viewModel.ChooseMifiNetwork(
+               activity = activity,
+               status = {status = it})
+
+           }
+
+        5 -> {
+            // Send plug the mifi details
+
+
+            Text(
+                text = "Connecting plug to MiFi Device",
+                fontSize = 20.sp, // Increase text size
+                fontWeight = FontWeight.Bold, // Make text bold
+                color = Color.Black // Text color
+            )
+            viewModel.ConnectPlugToMifi(
+                activity = activity,
+                status =  {status = it},
+                password = "1234567890"
+            )
+
+
+        }
+        5 -> {
+            // Connect to mifi device
+
+        }
+
 
         else -> {}
     }
@@ -679,12 +753,14 @@ fun MainActivity.DisplayPlugNetworks(activity: MainActivity, plugWifiNetworks: L
                 Log.d("Initialise", result)
             }
             Log.d("test", "connect_to_jamie_is_trying: $ssid")
-            status(1)
+            status(4)
         },colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0033A0))) {
             Text(ssid, color = Color.White)
         }
     }
 }
+
+
 
 // Adds a button to allow refresh of networks if it doesn't appear
 @Composable
@@ -704,6 +780,23 @@ fun ReturnWifiButton(status: (Int) -> Unit) {
         status(1)
     },colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0033A0))) {
         Text("Return to home", color = Color.White)
+    }
+}
+
+@RequiresApi(Build.VERSION_CODES.Q)
+@Composable
+fun MainActivity.DisplayMifiNetworks(activity: MainActivity, status: (Int) -> Unit){
+    Log.d("hi again", "It should be scanning now?")
+
+    // For each network add a button to connect
+    mifiNetworks.forEach { ssid ->
+        Button(onClick = {
+            mifiNetworks.clear()
+            mifiNetworks.add(ssid)
+            status(5)
+        },colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0033A0))) {
+            Text(ssid, color = Color.White)
+        }
     }
 }
 
