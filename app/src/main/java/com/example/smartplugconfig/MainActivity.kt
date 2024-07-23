@@ -132,7 +132,7 @@ class MainActivity : ComponentActivity() {
         }
 
     // Connect to open wifi (no password) temporary
-    fun connectToOpenWifi(ssid: String) {
+    fun connectToOpenWifi(ssid: String, status: (Int) -> Unit, state : Int) {
         val wifiNetworkSpecifier = WifiNetworkSpecifier.Builder()
             .setSsid(ssid)
             .build()
@@ -148,18 +148,20 @@ class MainActivity : ComponentActivity() {
                 super.onAvailable(network)
                 connectivityManager.bindProcessToNetwork(network)
                 Log.d("WifiConnection", "Connected to $ssid")
+                connectionSuccessful(ssid = ssid, status = status, state = state)
             }
 
             override fun onUnavailable() {
                 super.onUnavailable()
                 Log.d("WifiConnection", "Connection to $ssid failed")
+                connectionFailed(ssid = ssid, status = status, state = state)
             }
+
         })
     }
-
     // Connect to normal wifi
     @SuppressLint("ServiceCast")
-    fun connectToWifi(ssid: String, password: String) {
+    fun connectToWifi(ssid: String, password: String, status: (Int) -> Unit, state: Int) {
 
         val wifiNetworkSpecifier = WifiNetworkSpecifier.Builder()
             .setSsid(ssid)
@@ -177,13 +179,33 @@ class MainActivity : ComponentActivity() {
                 super.onAvailable(network)
                 connectivityManager.bindProcessToNetwork(network)
                 Log.d("WifiConnection", "Connected to $ssid")
+                connectionSuccessful(ssid = ssid, status = status, state = state)
             }
 
             override fun onUnavailable() {
                 super.onUnavailable()
                 Log.d("WifiConnection", "Connection to $ssid failed")
+                connectionFailed(ssid = ssid, status = status, state = state)
             }
         })
+
+    }
+
+    fun connectionSuccessful(ssid : String, status: (Int) -> Unit, state : Int){
+        Toast.makeText(
+            this,
+            "Connected to Wifi $ssid",
+            Toast.LENGTH_SHORT
+        ).show()
+        status(state+2)
+    }
+    fun connectionFailed(ssid : String, status: (Int) -> Unit, state : Int){
+        Toast.makeText(
+            this,
+            "Connection to WiFi failed, please retry $ssid",
+            Toast.LENGTH_LONG
+        ).show()
+        status(state+1)
     }
 
     @SuppressLint("MissingPermission")
@@ -191,8 +213,6 @@ class MainActivity : ComponentActivity() {
         super.onDestroy()
     }
 }
-
-
 
 class MainViewModel : ViewModel() {
     private val _ipAddress = mutableStateOf<String?>(null)
@@ -219,7 +239,7 @@ class MainViewModel : ViewModel() {
 
 
     @Composable
-    fun connectToPlugWifi(activity: MainActivity, plugWifiNetworks: SnapshotStateList<String>, status: (Int) -> Unit): String {
+    fun connectToPlugWifi(activity: MainActivity, plugWifiNetworks: SnapshotStateList<String>, status: (Int) -> Unit, state: Int): String {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
@@ -229,7 +249,7 @@ class MainViewModel : ViewModel() {
 
         ) {
             RefreshWifiButton(activity = activity, status = status)
-            activity.DisplayPlugNetworks(activity, plugWifiNetworks, status = status)
+            activity.DisplayPlugNetworks(activity, plugWifiNetworks, status = status, state = state)
             ReturnWifiButton(status = status)
         }
         return "Trying to connect to wifi"
@@ -259,7 +279,7 @@ class MainViewModel : ViewModel() {
                     status(1)
                 }else{
                     Log.d("Success", "Plug and MiFi are connected")
-                    status(7)
+                    status(6)
             }
             }
         }else{
@@ -400,7 +420,6 @@ class MainViewModel : ViewModel() {
         }
     }
 }
-
 
 @Composable
 fun SmartPlugConfigApp(viewModel: MainViewModel = viewModel(), activity: MainActivity, plugWifiNetworks: SnapshotStateList<String>) {
@@ -544,6 +563,7 @@ fun ButtonsWithTextOutput(
                 activity = activity,
                 plugWifiNetworks = plugWifiNetworks,
                 status = { status = it },
+                state = status
             )
         }
         3 -> {
@@ -556,11 +576,7 @@ fun ButtonsWithTextOutput(
                status = {status = it})
 
            }
-        5 ->{
-            status = 4
-        }
-
-        6 -> {
+        5 -> {
             // Send plug the mifi details
 
 
@@ -580,7 +596,7 @@ fun ButtonsWithTextOutput(
 
 
         }
-        7 -> {
+        6 -> {
             // Connect to mifi device
             Text(
                 text = "Connecting phone to MiFi device",
@@ -590,8 +606,15 @@ fun ButtonsWithTextOutput(
             )
             val mifiSsid = activity.mifiNetworks.single()
 
-            activity.connectToWifi(ssid = mifiSsid, password = "1234567890")
+            activity.connectToWifi(ssid = mifiSsid, password = "1234567890", status = {status = it}, state = status)
+            status = 1
 
+        }
+        7-> {
+            status = 4
+        }
+        8->{
+            status = 1
         }
 
 
@@ -619,9 +642,8 @@ class DeviceScanner(private val context: Context) {
             Log.d("DeviceScanner", "Starting scan in range 192.168.y.z")
 
             // Scan the range 192.168.y.z where y and z vary from 0 to 255
-            for (y in 0..255) {
-                for (z in 1..254) { // Skipping 0 and 255 for z as they are typically not used for hosts
-                    val hostAddress = "192.168.$y.$z"
+                for (z in 2..254) { // Skipping 0 and 255 for z as they are typically not used for hosts
+                    val hostAddress = "192.168.100.$z"
 
                     // Log each host address being scanned
                     Log.d("DeviceScanner", "Scanning IP: $hostAddress")
@@ -640,7 +662,7 @@ class DeviceScanner(private val context: Context) {
                         Log.d("DeviceScanner", "Failed to connect to $hostAddress: ${e.message}")
                     }
                 }
-            }
+
             return deviceList
         }
 
@@ -679,14 +701,14 @@ private fun MainActivity.wifiList() {
 }
 
 @Composable
-fun MainActivity.DisplayPlugNetworks(activity: MainActivity, plugWifiNetworks: List<String>, status: (Int) -> Unit){
+fun MainActivity.DisplayPlugNetworks(activity: MainActivity, plugWifiNetworks: List<String>, status: (Int) -> Unit, state:Int){
     Log.d("hi again", "It should be scanning now?")
 
     // For each network add a button to connect
     plugWifiNetworks .forEach { ssid ->
         Button(onClick = {
             if(wifiManager.isWifiEnabled){
-                activity.connectToOpenWifi(ssid)
+                activity.connectToOpenWifi(ssid, status, state = state)
                 Log.d("Initialise", "WiFi is turned on, connecting to plug")
             }else{
                 Toast.makeText(
@@ -696,7 +718,7 @@ fun MainActivity.DisplayPlugNetworks(activity: MainActivity, plugWifiNetworks: L
                 ).show()
             }
             Log.d("test", "connect_to_jamie_is_trying: $ssid")
-            status(4)
+
         },colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0033A0))) {
             Text(ssid, color = Color.White)
         }
@@ -729,7 +751,7 @@ fun ReturnWifiButton(status: (Int) -> Unit) {
 fun RefreshMifiButton(activity: MainActivity, status: (Int) -> Unit) {
     Button(onClick = {
         activity.wifiList()
-        status(5)   // Sends to section where it then goes back
+        status(7)   // Sends to section where it then goes back
     },colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0033A0))) {
         Text("Refresh Networks", color = Color.White)
     }
@@ -744,7 +766,7 @@ fun MainActivity.DisplayMifiNetworks(activity: MainActivity, status: (Int) -> Un
         Button(onClick = {
             mifiNetworks.clear()
             mifiNetworks.add(ssid)
-            status(6)
+            status(5)
         },colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0033A0))) {
             Text(ssid, color = Color.White)
         }
