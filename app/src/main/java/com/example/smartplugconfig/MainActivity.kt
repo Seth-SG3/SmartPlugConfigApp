@@ -12,7 +12,6 @@ import android.net.NetworkRequest
 import android.net.wifi.WifiManager
 import android.net.wifi.WifiNetworkSpecifier
 import android.os.AsyncTask
-import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
 import android.util.Log
@@ -21,7 +20,6 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.annotation.RequiresApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -74,15 +72,11 @@ class MainActivity : ComponentActivity() {
         Manifest.permission.CHANGE_WIFI_STATE,
         Manifest.permission.ACCESS_FINE_LOCATION,
         Manifest.permission.ACCESS_WIFI_STATE,
-        Manifest.permission.NEARBY_WIFI_DEVICES
     )
-
     lateinit var wifiManager: WifiManager
     var mifiNetworks = mutableStateListOf<String>()
     var plugWifiNetworks = mutableStateListOf<String>()
-    private var hotspotReservation: WifiManager.LocalOnlyHotspotReservation? = null
 
-    @RequiresApi(Build.VERSION_CODES.O)
     override fun onCreate(savedInstanceState: Bundle?) {
         initialisation()
         super.onCreate(savedInstanceState)
@@ -91,27 +85,10 @@ class MainActivity : ComponentActivity() {
             SmartPlugConfigTheme {
                 SmartPlugConfigApp(activity = this, plugWifiNetworks = plugWifiNetworks)
             }
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
                 if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
                     requestPermissions(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION), 1)
                 }
             }
-        }
-    }
-    @Deprecated("This method has been deprecated in favor of using the Activity Result API\n      which brings increased type safety via an {@link ActivityResultContract} and the prebuilt\n      contracts for common intents available in\n      {@link androidx.activity.result.contract.ActivityResultContracts}, provides hooks for\n      testing, and allow receiving results in separate, testable classes independent from your\n      activity. Use\n      {@link #registerForActivityResult(ActivityResultContract, ActivityResultCallback)} passing\n      in a {@link RequestMultiplePermissions} object for the {@link ActivityResultContract} and\n      handling the result in the {@link ActivityResultCallback#onActivityResult(Object) callback}.")
-    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<String>, grantResults: IntArray) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        if (requestCode == 1) {
-            if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                // Permission granted
-            } else {
-                // Permission denied
-                Toast.makeText(this, "Permission denied", Toast.LENGTH_SHORT).show()
-            }
-        }
-    }
-    private fun wifiManagerInitialisation(){
-        wifiManager = applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
         }
 
     private fun initialisation() {
@@ -119,20 +96,25 @@ class MainActivity : ComponentActivity() {
         checkAndRequestPermissions()
 
     }
-    fun turnOnWifi(context: Context): String {
-        // Create an Intent to open the hotspot settings
-        val intent = Intent(Settings.ACTION_WIRELESS_SETTINGS)
 
-        // Check if there is an activity that can handle this intent
-        if (intent.resolveActivity(context.packageManager) != null) {
-            // Start the settings activity
-            context.startActivity(intent)
-            return "Opening wifi settings..."
+    private fun wifiManagerInitialisation(){
+        wifiManager = applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
+        }
+
+    private fun checkAndRequestPermissions() {
+        val permissionsNeeded = requiredPermissions.filter {
+            ContextCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED
+        }
+
+        if (permissionsNeeded.isNotEmpty()) {
+            requestPermissionsLauncher.launch(permissionsNeeded.toTypedArray())
         } else {
-            return "Unable to open wifi settings."
+            Toast.makeText(this, "All permissions already granted!", Toast.LENGTH_SHORT).show()
+            // Return back to code
         }
     }
-// Establishes all necessary permissions for a wifi scan
+
+    // Establishes all necessary permissions for a wifi scan
     private val requestPermissionsLauncher =
         registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { permissions ->
             val allPermissionsGranted = permissions.entries.all { it.value }
@@ -149,21 +131,33 @@ class MainActivity : ComponentActivity() {
             }
         }
 
-    private fun checkAndRequestPermissions() {
-        val permissionsNeeded = requiredPermissions.filter {
-            ContextCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED
-        }
+    // Connect to open wifi (no password) temporary
+    fun connectToOpenWifi(ssid: String) {
+        val wifiNetworkSpecifier = WifiNetworkSpecifier.Builder()
+            .setSsid(ssid)
+            .build()
 
-        if (permissionsNeeded.isNotEmpty()) {
-            requestPermissionsLauncher.launch(permissionsNeeded.toTypedArray())
-        } else {
-            Toast.makeText(this, "All permissions already granted!", Toast.LENGTH_SHORT).show()
-            // Return back to code
-        }
+        val networkRequest = NetworkRequest.Builder()
+            .addTransportType(NetworkCapabilities.TRANSPORT_WIFI)
+            .setNetworkSpecifier(wifiNetworkSpecifier)
+            .build()
+
+        val connectivityManager = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        connectivityManager.requestNetwork(networkRequest, object : ConnectivityManager.NetworkCallback() {
+            override fun onAvailable(network: android.net.Network) {
+                super.onAvailable(network)
+                connectivityManager.bindProcessToNetwork(network)
+                Log.d("WifiConnection", "Connected to $ssid")
+            }
+
+            override fun onUnavailable() {
+                super.onUnavailable()
+                Log.d("WifiConnection", "Connection to $ssid failed")
+            }
+        })
     }
 
     // Connect to normal wifi
-    @RequiresApi(Build.VERSION_CODES.Q)
     @SuppressLint("ServiceCast")
     fun connectToWifi(ssid: String, password: String) {
 
@@ -192,74 +186,9 @@ class MainActivity : ComponentActivity() {
         })
     }
 
-    // Connect to open wifi (no password) temporary
-    @RequiresApi(Build.VERSION_CODES.Q)
-    fun connectToOpenWifi(ssid: String) {
-        val wifiNetworkSpecifier = WifiNetworkSpecifier.Builder()
-            .setSsid(ssid)
-            .build()
-
-        val networkRequest = NetworkRequest.Builder()
-            .addTransportType(NetworkCapabilities.TRANSPORT_WIFI)
-            .setNetworkSpecifier(wifiNetworkSpecifier)
-            .build()
-
-        val connectivityManager = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
-        connectivityManager.requestNetwork(networkRequest, object : ConnectivityManager.NetworkCallback() {
-            override fun onAvailable(network: android.net.Network) {
-                super.onAvailable(network)
-                connectivityManager.bindProcessToNetwork(network)
-                Log.d("WifiConnection", "Connected to $ssid")
-            }
-
-            override fun onUnavailable() {
-                super.onUnavailable()
-                Log.d("WifiConnection", "Connection to $ssid failed")
-            }
-        })
-    }
-
-
-    @Suppress("DEPRECATION")
     @SuppressLint("MissingPermission")
-    @RequiresApi(Build.VERSION_CODES.O)
-    fun startLocalOnlyHotspot() {
-        wifiManager.startLocalOnlyHotspot(object : WifiManager.LocalOnlyHotspotCallback() {
-            override fun onStarted(reservation: WifiManager.LocalOnlyHotspotReservation) {
-                super.onStarted(reservation)
-                hotspotReservation = reservation
-                val config = reservation.wifiConfiguration
-                config?.let { config ->
-                    Toast.makeText(
-                        this@MainActivity,
-                        " SSID=${config.SSID} Password=${config.preSharedKey}",
-                        Toast.LENGTH_LONG
-                    ).show()
-                } ?: run {
-                    Toast.makeText(
-                        this@MainActivity,
-                        "Hotspot started, but configuration is null",
-                        Toast.LENGTH_LONG
-                    ).show()
-                }
-            }
-
-            override fun onStopped() {
-                super.onStopped()
-                Toast.makeText(this@MainActivity, "Hotspot stopped", Toast.LENGTH_SHORT).show()
-            }
-
-            override fun onFailed(reason: Int) {
-                super.onFailed(reason)
-                Toast.makeText(this@MainActivity, "Hotspot failed to start: $reason", Toast.LENGTH_SHORT).show()
-            }
-        }, null)
-    }
-
-    @RequiresApi(Build.VERSION_CODES.O)
     override fun onDestroy() {
         super.onDestroy()
-        hotspotReservation?.close()
     }
 }
 
@@ -288,7 +217,7 @@ class MainViewModel : ViewModel() {
         })
     }
 
-    @RequiresApi(Build.VERSION_CODES.Q)
+
     @Composable
     fun connectToPlugWifi(activity: MainActivity, plugWifiNetworks: SnapshotStateList<String>, status: (Int) -> Unit): String {
         Column(
@@ -306,7 +235,6 @@ class MainViewModel : ViewModel() {
         return "Trying to connect to wifi"
     }
 
-    @RequiresApi(Build.VERSION_CODES.Q)
     @Composable
     fun ChooseMifiNetwork(activity: MainActivity, status: (Int) -> Unit) {
         Column(
@@ -323,7 +251,7 @@ class MainViewModel : ViewModel() {
         }
     }
 
-    fun ConnectPlugToMifi(activity: MainActivity, status: (Int) -> Unit, ssid: String, password: String) {
+    fun connectPlugToMifi(activity: MainActivity, status: (Int) -> Unit, ssid: String, password: String) {
         if (activity.mifiNetworks.size == 1) {
             this.sendWifiConfig(ssid, password){
                 result -> if (result.contains("error", ignoreCase = true)){
@@ -339,43 +267,12 @@ class MainViewModel : ViewModel() {
         }
     }
 
-
-
-    @RequiresApi(Build.VERSION_CODES.O)
-    fun turnOnHotspot(context: Context, activity: MainActivity): String {
-        // Create an Intent to open the hotspot settings
-       val intent = Intent(Settings.ACTION_WIRELESS_SETTINGS)
-
-        // Check if there is an activity that can handle this intent
-        if (intent.resolveActivity(context.packageManager) != null) {
-            // Start the settings activity
-            context.startActivity(intent)
-            return "Opening hotspot settings..."
-        } else {
-            return "Unable to open hotspot settings."
-        }
-
-        //This here is a test for how to connect through a local only hotspot. I have no idea if there is any
-        //Practical way to use it as we only find out the ssid and password after creation
-//        if()
-//        activity.startLocalHotspot()
-
-
-
-        return ("Turning on Hotspot")
-    }
-
-fun ipScan(): String {
-        return "Scanning for IP Address..."
-    }
-
     fun sendWifiConfig( ssid: String = "Pixel", password: String = "intrasonics",onResult: (String) -> Unit) {
         viewModelScope.launch {
             val result = sendWifiConfigInternal(ssid, password)
             onResult(result)
         }
     }
-
 
     private suspend fun sendWifiConfigInternal(ssid: String, password: String): String {
         //uses default ip for tasmota plug wifi ap
@@ -403,6 +300,24 @@ fun ipScan(): String {
             Log.e("sendWifiConfig", "Exception occurred", e)
             "Error: ${e.localizedMessage ?: "An unknown error occurred"}"
         }
+    }
+
+    fun turnOnHotspot(context: Context): String {
+//         Create an Intent to open the hotspot settings
+       val intent = Intent(Settings.ACTION_WIRELESS_SETTINGS)
+
+        // Check if there is an activity that can handle this intent
+        if (intent.resolveActivity(context.packageManager) != null) {
+            // Start the settings activity
+            context.startActivity(intent)
+            return "Opening hotspot settings..."
+        } else {
+            return "Unable to open hotspot settings."
+        }
+    }
+
+    fun ipScan(): String {
+        return "Scanning for IP Address..."
     }
 
     fun sendMQTTConfig(onResult: (String) -> Unit) {
@@ -487,7 +402,6 @@ fun ipScan(): String {
 }
 
 
-@RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun SmartPlugConfigApp(viewModel: MainViewModel = viewModel(), activity: MainActivity, plugWifiNetworks: SnapshotStateList<String>) {
     var currentTextOutput by remember { mutableStateOf("output") }
@@ -504,7 +418,6 @@ fun SmartPlugConfigApp(viewModel: MainViewModel = viewModel(), activity: MainAct
 }
 
 
-@RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun ButtonsWithTextOutput(
     textToDisplay: String,
@@ -569,7 +482,7 @@ fun ButtonsWithTextOutput(
                 }
                 Spacer(modifier = Modifier.height(20.dp))
                 Button(onClick = {
-                    val result = viewModel.turnOnHotspot(context, activity = activity)
+                    val result = viewModel.turnOnHotspot(context)
                     setCurrentTextOutput(result)
                 },
                     colors = ButtonDefaults.buttonColors(containerColor = ipsosBlue) // Set button color
@@ -658,7 +571,7 @@ fun ButtonsWithTextOutput(
                 color = Color.Black // Text color
             )
             val mifiSsid = activity.mifiNetworks.single()
-            viewModel.ConnectPlugToMifi(
+            viewModel.connectPlugToMifi(
                 activity = activity,
                 status =  {status = it},
                 ssid = mifiSsid,
@@ -702,7 +615,6 @@ class DeviceScanner(private val context: Context) {
         override fun doInBackground(vararg params: Void?): List<String> {
             val deviceList = mutableListOf<String>()
             val wifiManager = context.applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
-            val dhcpInfo = wifiManager.dhcpInfo
 
             Log.d("DeviceScanner", "Starting scan in range 192.168.y.z")
 
@@ -743,86 +655,7 @@ class DeviceScanner(private val context: Context) {
     }
 }
 
-@RequiresApi(Build.VERSION_CODES.Q)
-@Composable
-fun MainActivity.DisplayPlugNetworks(activity: MainActivity, plugWifiNetworks: List<String>, status: (Int) -> Unit){
-    Log.d("hi again", "It should be scanning now?")
-
-    // For each network add a button to connect
-    plugWifiNetworks .forEach { ssid ->
-        Button(onClick = {
-            if(wifiManager.isWifiEnabled){
-                activity.connectToOpenWifi(ssid)
-                Log.d("Initialise", "WiFi is turned on, connecting to plug")
-            }else{
-                Toast.makeText(
-                    this,
-                    "WiFi must be turned on",
-                    Toast.LENGTH_LONG
-                ).show()
-                val result = turnOnWifi(this)
-                Log.d("Initialise", result)
-            }
-            Log.d("test", "connect_to_jamie_is_trying: $ssid")
-            status(4)
-        },colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0033A0))) {
-            Text(ssid, color = Color.White)
-        }
-    }
-}
-
-
-
-// Adds a button to allow refresh of networks if it doesn't appear
-@Composable
-fun RefreshWifiButton(activity: MainActivity, status: (Int) -> Unit) {
-    Button(onClick = {
-        activity.wifiList()
-        status(3)   // Sends to section where it then goes back
-    },colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0033A0))) {
-        Text("Refresh Networks", color = Color.White)
-    }
-}
-
-// Adds a button to allow refresh of networks if it doesn't appear
-@Composable
-fun RefreshMifiButton(activity: MainActivity, status: (Int) -> Unit) {
-    Button(onClick = {
-        activity.wifiList()
-        status(5)   // Sends to section where it then goes back
-    },colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0033A0))) {
-        Text("Refresh Networks", color = Color.White)
-    }
-}
-
-
-// Adds a button to allow return to main menu
-@Composable
-fun ReturnWifiButton(status: (Int) -> Unit) {
-    Button(onClick = {
-        status(1)
-    },colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0033A0))) {
-        Text("Return to home", color = Color.White)
-    }
-}
-
-@RequiresApi(Build.VERSION_CODES.Q)
-@Composable
-fun MainActivity.DisplayMifiNetworks(activity: MainActivity, status: (Int) -> Unit){
-    Log.d("hi again", "It should be scanning now?")
-
-    // For each network add a button to connect
-    mifiNetworks.forEach { ssid ->
-        Button(onClick = {
-            mifiNetworks.clear()
-            mifiNetworks.add(ssid)
-            status(6)
-        },colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0033A0))) {
-            Text(ssid, color = Color.White)
-        }
-    }
-}
-
+@Suppress("DEPRECATION")
 @SuppressLint("MissingPermission")
 private fun MainActivity.wifiList() {
 
@@ -845,8 +678,77 @@ private fun MainActivity.wifiList() {
     Log.d("test", "wifiManager_jamie_is_trying: $plugWifiNetworks")
 }
 
-@RequiresApi(Build.VERSION_CODES.O)
-private fun MainActivity.startLocalHotspot(){
+@Composable
+fun MainActivity.DisplayPlugNetworks(activity: MainActivity, plugWifiNetworks: List<String>, status: (Int) -> Unit){
+    Log.d("hi again", "It should be scanning now?")
 
-    startLocalOnlyHotspot()
+    // For each network add a button to connect
+    plugWifiNetworks .forEach { ssid ->
+        Button(onClick = {
+            if(wifiManager.isWifiEnabled){
+                activity.connectToOpenWifi(ssid)
+                Log.d("Initialise", "WiFi is turned on, connecting to plug")
+            }else{
+                Toast.makeText(
+                    this,
+                    "WiFi must be turned on",
+                    Toast.LENGTH_LONG
+                ).show()
+            }
+            Log.d("test", "connect_to_jamie_is_trying: $ssid")
+            status(4)
+        },colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0033A0))) {
+            Text(ssid, color = Color.White)
+        }
+    }
 }
+
+// Adds a button to allow refresh of networks if it doesn't appear
+@Composable
+fun RefreshWifiButton(activity: MainActivity, status: (Int) -> Unit) {
+    Button(onClick = {
+        activity.wifiList()
+        status(3)   // Sends to section where it then goes back
+    },colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0033A0))) {
+        Text("Refresh Networks", color = Color.White)
+    }
+}
+
+// Adds a button to allow return to main menu
+@Composable
+fun ReturnWifiButton(status: (Int) -> Unit) {
+    Button(onClick = {
+        status(1)
+    },colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0033A0))) {
+        Text("Return to home", color = Color.White)
+    }
+}
+
+// Adds a button to allow refresh of networks if it doesn't appear
+@Composable
+fun RefreshMifiButton(activity: MainActivity, status: (Int) -> Unit) {
+    Button(onClick = {
+        activity.wifiList()
+        status(5)   // Sends to section where it then goes back
+    },colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0033A0))) {
+        Text("Refresh Networks", color = Color.White)
+    }
+}
+
+@Composable
+fun MainActivity.DisplayMifiNetworks(activity: MainActivity, status: (Int) -> Unit){
+    Log.d("hi again", "It should be scanning now?")
+
+    // For each network add a button to connect
+    mifiNetworks.forEach { ssid ->
+        Button(onClick = {
+            mifiNetworks.clear()
+            mifiNetworks.add(ssid)
+            status(6)
+        },colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0033A0))) {
+            Text(ssid, color = Color.White)
+        }
+    }
+}
+
+
