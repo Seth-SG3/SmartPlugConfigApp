@@ -67,6 +67,7 @@ import java.net.InetSocketAddress
 import java.net.Socket
 import java.net.URL
 import android.net.wifi.SoftApConfiguration
+import android.os.Build
 import androidx.annotation.RequiresApi
 import com.example.smartplugconfig.hotspot.UnhiddenSoftApConfigurationBuilder
 import java.util.concurrent.Executor
@@ -77,11 +78,13 @@ class MainActivity : ComponentActivity() {
         Manifest.permission.CHANGE_WIFI_STATE,
         Manifest.permission.ACCESS_FINE_LOCATION,
         Manifest.permission.ACCESS_WIFI_STATE,
+        Manifest.permission.NEARBY_WIFI_DEVICES
     )
     lateinit var wifiManager: WifiManager
     var mifiNetworks = mutableStateListOf<String>()
     var plugWifiNetworks = mutableStateListOf<String>()
 
+    @RequiresApi(Build.VERSION_CODES.TIRAMISU)
     override fun onCreate(savedInstanceState: Bundle?) {
         initialisation()
         super.onCreate(savedInstanceState)
@@ -458,6 +461,7 @@ class MainViewModel : ViewModel() {
     }
 }
 
+@RequiresApi(Build.VERSION_CODES.TIRAMISU)
 @Composable
 fun SmartPlugConfigApp(viewModel: MainViewModel = viewModel(), activity: MainActivity, plugWifiNetworks: SnapshotStateList<String>) {
     var currentTextOutput by remember { mutableStateOf("output") }
@@ -474,6 +478,7 @@ fun SmartPlugConfigApp(viewModel: MainViewModel = viewModel(), activity: MainAct
 }
 
 
+@RequiresApi(Build.VERSION_CODES.TIRAMISU)
 @Composable
 fun ButtonsWithTextOutput(
     textToDisplay: String,
