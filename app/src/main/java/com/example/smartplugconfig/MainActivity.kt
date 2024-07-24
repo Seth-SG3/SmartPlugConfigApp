@@ -66,7 +66,10 @@ import java.net.HttpURLConnection
 import java.net.InetSocketAddress
 import java.net.Socket
 import java.net.URL
-
+import android.net.wifi.SoftApConfiguration
+import androidx.annotation.RequiresApi
+import com.example.smartplugconfig.hotspot.UnhiddenSoftApConfigurationBuilder
+import java.util.concurrent.Executor
 
 class MainActivity : ComponentActivity() {
 
@@ -323,7 +326,7 @@ class MainViewModel : ViewModel() {
             "Error: ${e.localizedMessage ?: "An unknown error occurred"}"
         }
     }
-
+    @RequiresApi(33)
     fun turnOnHotspot(context: Context): String {
         // TODO:
         //  1. Investigate if we could use an Andorid API to turn on Local only hotspot automatically
@@ -331,9 +334,10 @@ class MainViewModel : ViewModel() {
         // 3. Investigate if we can reliably restart the hotspot with the same ssid and password
         startLocalOnlyHotspotWithConfig(
             context = context,
-            config = SoftApConfiguration.Builder()
-                .setSsid("SmartPlugConfig")
-                .setPassphrase("password")
+            config = UnhiddenSoftApConfigurationBuilder()
+                .setSsid("students-rock")
+                .setAutoshutdownEnabled(false)
+                .setPassphrase(passphrase="very-secure", securityType=SoftApConfiguration.SECURITY_TYPE_WPA2_PSK)
                 .build(),
             executor = null,
             callback = object : WifiManager.LocalOnlyHotspotCallback() {
@@ -351,21 +355,9 @@ class MainViewModel : ViewModel() {
                     super.onFailed(reason)
                     Log.d("Hotspot", "Hotspot failed")
                 }
-            }
+            })
 
-//
-//
-////         Create an Intent to open the hotspot settings
-//       val intent = Intent(Settings.ACTION_WIRELESS_SETTINGS)
-//
-//        // Check if there is an activity that can handle this intent
-//        if (intent.resolveActivity(context.packageManager) != null) {
-//            // Start the settings activity
-//            context.startActivity(intent)
-//            return "Opening hotspot settings..."
-//        } else {
-//            return "Unable to open hotspot settings."
-//        }
+        return "starting a newhotspot connection..."
     }
     fun startLocalOnlyHotspotWithConfig(
         context: Context,
