@@ -191,7 +191,11 @@ class MainViewModel : ViewModel() {
 //    }
 
 
-    fun sendWifiConfig( ssid: String = "Pixel", password: String = "intrasonics",onResult: (String) -> Unit) {
+    fun sendWifiConfig(
+        ssid: String = "Pixel",
+        password: String = "intrasonics",
+        onResult: (String) -> Unit
+    ) {
         viewModelScope.launch {
             val result = sendWifiConfigInternal(ssid, password)
             onResult(result)
@@ -200,7 +204,8 @@ class MainViewModel : ViewModel() {
 
     private suspend fun sendWifiConfigInternal(ssid: String, password: String): String {
         //uses default ip for tasmota plug wifi ap
-        val urlString = "http://192.168.4.1/cm?cmnd=Backlog%20SSID1%20${ssid}%3B%20Password1%20${password}%3B%20WifiConfig%205%3B%20restart%201"
+        val urlString =
+            "http://192.168.4.1/cm?cmnd=Backlog%20SSID1%20${ssid}%3B%20Password1%20${password}%3B%20WifiConfig%205%3B%20restart%201"
         return try {
             Log.d("sendWifiConfig", "Attempting to send request to $urlString")
             val url = URL(urlString)
@@ -225,6 +230,7 @@ class MainViewModel : ViewModel() {
             "Error: ${e.localizedMessage ?: "An unknown error occurred"}"
         }
     }
+
     @RequiresApi(33)
     fun turnOnHotspot(context: Context): String {
         // TODO:
@@ -236,7 +242,10 @@ class MainViewModel : ViewModel() {
             config = UnhiddenSoftApConfigurationBuilder()
                 .setSsid("Pixel")
                 .setAutoshutdownEnabled(false)
-                .setPassphrase(passphrase="intrasonics", securityType=SoftApConfiguration.SECURITY_TYPE_WPA2_PSK)
+                .setPassphrase(
+                    passphrase = "intrasonics",
+                    securityType = SoftApConfiguration.SECURITY_TYPE_WPA2_PSK
+                )
                 .build(),
             executor = null,
             callback = object : WifiManager.LocalOnlyHotspotCallback() {
@@ -258,6 +267,7 @@ class MainViewModel : ViewModel() {
 
         return "starting a newhotspot connection..."
     }
+
     @SuppressLint("NewApi")
     fun startLocalOnlyHotspotWithConfig(
         context: Context,
@@ -265,7 +275,8 @@ class MainViewModel : ViewModel() {
         executor: Executor?,
         callback: WifiManager.LocalOnlyHotspotCallback
     ) {
-        val wifiManager = context.applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
+        val wifiManager =
+            context.applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
         WifiManager::class.java.getMethod(
             "startLocalOnlyHotspot", SoftApConfiguration::class.java, Executor::class.java,
             WifiManager.LocalOnlyHotspotCallback::class.java,
@@ -281,10 +292,12 @@ class MainViewModel : ViewModel() {
 
     private suspend fun sendMQTTConfigInternal(): String {
         val ip = _ipAddress.value
-        val host = "192.168.245.252"  //test values for mqtt broker app on my phone, still not working
+        val host =
+            "192.168.245.252"  //test values for mqtt broker app on my phone, still not working
         val topic = "smartPlugTest"
 
-        val urlString = "http://${ip}/cm?cmnd=Backlog%20MqttHost%20$host%3B%20MqttUser%20Test1%3B%20MqttPassword%20Test2%3B%20Topic%20$topic"
+        val urlString =
+            "http://${ip}/cm?cmnd=Backlog%20MqttHost%20$host%3B%20MqttUser%20Test1%3B%20MqttPassword%20Test2%3B%20Topic%20$topic"
         return try {
             Log.d("sendMQTTConfig", "Attempting to send request to $urlString")
             val url = URL(urlString)
@@ -311,49 +324,94 @@ class MainViewModel : ViewModel() {
         }
     }
 
-    fun getPowerReading(onResult: (String) -> Unit) {
+    @RequiresApi(Build.VERSION_CODES.TIRAMISU)
+    fun getPowerReading(context: Context, onResult: (String) -> Unit) {
         viewModelScope.launch {
-            val result = getPowerReadingInternal()
+            val result = getPowerReadingInternal(context)
             onResult(result)
         }
     }
 
-    private suspend fun getPowerReadingInternal(): String {
+    @RequiresApi(Build.VERSION_CODES.TIRAMISU)
+    private suspend fun getPowerReadingInternal(context: Context): String {
         val ip = _ipAddress.value
         val urlString = "http://${ip}/cm?cmnd=Status%208"
-        return try {
-            Log.d("getPowerReading", "Attempting to send request to $urlString")
-            val url = URL(urlString)
-            withContext(Dispatchers.IO) {
-                with(url.openConnection() as HttpURLConnection) {
-                    requestMethod = "GET"
-                    Log.d("getPowerReading", "Request method set to $requestMethod")
+        var attempts = 0
 
-                    val responseCode = responseCode
-                    Log.d("getPowerReading", "Response code: $responseCode")
-                    if (responseCode == HttpURLConnection.HTTP_OK) {
-                        val response = inputStream.bufferedReader().use(BufferedReader::readText)
-                        Log.d("getPowerReading", "Response: $response")
+        while (attempts < 3) {
+            if (isLocalOnlyHotspotEnabled(context)) {
+                return try {
+                    Log.d("getPowerReading", "Attempting to send request to $urlString")
+                    val url = URL(urlString)
+                    withContext(Dispatchers.IO) {
+                        with(url.openConnection() as HttpURLConnection) {
+                            requestMethod = "GET"
+                            Log.d("getPowerReading", "Request method set to $requestMethod")
 
-                        // Parse the JSON response
-                        val jsonObject = JSONObject(response)
-                        val statusSNS = jsonObject.getJSONObject("StatusSNS")
-                        val energy = statusSNS.getJSONObject("ENERGY")
-                        val power = energy.getInt("Power")
+                            val responseCode = responseCode
+                            Log.d("getPowerReading", "Response code: $responseCode")
+                            if (responseCode == HttpURLConnection.HTTP_OK) {
+                                val response =
+                                    inputStream.bufferedReader().use(BufferedReader::readText)
+                                Log.d("getPowerReading", "Response: $response")
 
-                        // Return the formatted string
-                        "Power: $power Watts"
-                    } else {
-                        "HTTP error code: $responseCode"
+                                // Parse the JSON response
+                                val jsonObject = JSONObject(response)
+                                val statusSNS = jsonObject.getJSONObject("StatusSNS")
+                                val energy = statusSNS.getJSONObject("ENERGY")
+                                val power = energy.getInt("Power")
+
+                                // Return the formatted string
+                                return@withContext "Power: $power Watts"
+                            } else {
+                                return@withContext "HTTP error code: $responseCode"
+                            }
+                        }
+                    }
+                } catch (e: Exception) {
+                    val errorMessage = "Error: ${e.localizedMessage ?: "An unknown error occurred"}"
+                    Log.e("getPowerReading", errorMessage, e)
+                    return errorMessage
+                }
+            } else {
+                turnOnHotspot(context)
+                delay(3000)
+                attempts++
+            }
+        }
+        return "Unable to send request after 3 attempts"
+    }
+
+    //is only actually checking if device has ip but wifi should never be on so i think is ok for now at least for soak testing
+    private fun isLocalOnlyHotspotEnabled(context: Context): Boolean {
+        val wifiManager =
+            context.applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
+
+        try {
+            val interfaces = NetworkInterface.getNetworkInterfaces()
+            while (interfaces.hasMoreElements()) {
+                val networkInterface = interfaces.nextElement()
+                val addresses = networkInterface.inetAddresses
+                while (addresses.hasMoreElements()) {
+                    val address = addresses.nextElement()
+                    if (!address.isLoopbackAddress && address is Inet4Address) {
+                        Log.d(
+                            "isLocalOnlyHotspotEnabled",
+                            "Device IP Address: ${address.hostAddress}"
+                        )
+                        return true
                     }
                 }
             }
         } catch (e: Exception) {
-            val errorMessage = "Error: ${e.localizedMessage ?: "An unknown error occurred"}"
-            Log.e("getPowerReading", errorMessage, e)
-            errorMessage
+            Log.d("isLocalOnlyHotspotEnabled", "Device does not have an IP address")
+            return false
         }
+        Log.d("isLocalOnlyHotspotEnabled", "Cannot get IP address")
+        return false
+
     }
+
 }
 
 @RequiresApi(Build.VERSION_CODES.TIRAMISU)
@@ -469,7 +527,7 @@ fun ButtonsWithTextOutput(
         Spacer(modifier = Modifier.height(20.dp))
         Button(
             onClick = {
-                viewModel.getPowerReading { result ->
+                viewModel.getPowerReading(context) { result ->
                     setCurrentTextOutput(result)
                 }
             },
