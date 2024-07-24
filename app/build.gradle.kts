@@ -9,7 +9,7 @@ android {
 
     defaultConfig {
         applicationId = "com.example.smartplugconfig"
-        minSdk = 24
+        minSdk = 29
         targetSdk = 34
         versionCode = 1
         versionName = "1.0"
@@ -59,6 +59,7 @@ dependencies {
     implementation(libs.androidx.ui.graphics)
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
+    implementation(libs.androidx.media3.common)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
@@ -73,5 +74,6 @@ dependencies {
     implementation(libs.kmqtt.common.jvm)
     implementation(libs.kmqtt.client.jvm)
     implementation(libs.kmqtt.broker.jvm)
+
 
 }

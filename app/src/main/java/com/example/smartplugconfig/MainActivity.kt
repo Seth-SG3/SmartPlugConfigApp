@@ -8,7 +8,6 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.wifi.WifiManager
 import android.os.AsyncTask
-import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
 import android.util.Log
@@ -16,6 +15,7 @@ import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -28,6 +28,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -38,6 +39,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -53,31 +55,76 @@ import java.net.HttpURLConnection
 import java.net.InetSocketAddress
 import java.net.Socket
 import java.net.URL
-
+import android.net.wifi.SoftApConfiguration
+import android.os.Build
+import androidx.annotation.RequiresApi
+import com.example.smartplugconfig.hotspot.UnhiddenSoftApConfigurationBuilder
+import java.util.concurrent.Executor
 
 class MainActivity : ComponentActivity() {
+
+    private val requiredPermissions = arrayOf(     // Any required permissions
+        Manifest.permission.CHANGE_WIFI_STATE,
+        Manifest.permission.ACCESS_FINE_LOCATION,
+        Manifest.permission.ACCESS_WIFI_STATE,
+        Manifest.permission.NEARBY_WIFI_DEVICES
+    )
+    lateinit var wifiManager: WifiManager
+    var mifiNetworks = mutableStateListOf<String>()
+    var plugWifiNetworks = mutableStateListOf<String>()
+
+    @RequiresApi(Build.VERSION_CODES.TIRAMISU)
     override fun onCreate(savedInstanceState: Bundle?) {
+        initialisation()
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
             SmartPlugConfigTheme {
                 SmartPlugConfigApp()
             }
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
                 if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
                     requestPermissions(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION), 1)
                 }
             }
         }
+
+    private fun initialisation() {
+        wifiManagerInitialisation()
+        checkAndRequestPermissions()
+
     }
-    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<String>, grantResults: IntArray) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        if (requestCode == 1) {
-            if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                // Permission granted
+
+    private fun wifiManagerInitialisation(){
+        wifiManager = applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
+        }
+
+    private fun checkAndRequestPermissions() {
+        val permissionsNeeded = requiredPermissions.filter {
+            ContextCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED
+        }
+
+        if (permissionsNeeded.isNotEmpty()) {
+            requestPermissionsLauncher.launch(permissionsNeeded.toTypedArray())
+        } else {
+            Toast.makeText(this, "All permissions already granted!", Toast.LENGTH_SHORT).show()
+            // Return back to code
+        }
+    }
+
+    // Establishes all necessary permissions for a wifi scan
+    private val requestPermissionsLauncher =
+        registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { permissions ->
+            val allPermissionsGranted = permissions.entries.all { it.value }
+            if (allPermissionsGranted) {
+                Toast.makeText(this, "All permissions granted!", Toast.LENGTH_SHORT).show()
+                // Return back to code
+
             } else {
-                // Permission denied
-                Toast.makeText(this, "Permission denied", Toast.LENGTH_SHORT).show()
+                Toast.makeText(
+                    this,
+                    "All permissions are required to start the hotspot",
+                    Toast.LENGTH_SHORT
+                ).show()
             }
         }
     }
@@ -137,22 +184,17 @@ class MainViewModel : ViewModel() {
         }
     }
 
-    fun ipScan(): String {
-        return "Scanning for IP Address..."
-    }
 
-    fun sendWifiConfig(onResult: (String) -> Unit) {
+    fun sendWifiConfig( ssid: String = "Pixel", password: String = "intrasonics",onResult: (String) -> Unit) {
         viewModelScope.launch {
-            val result = sendWifiConfigInternal()
+            val result = sendWifiConfigInternal(ssid, password)
             onResult(result)
         }
     }
 
-    private suspend fun sendWifiConfigInternal(): String {
+    private suspend fun sendWifiConfigInternal(ssid: String, password: String): String {
         //uses default ip for tasmota plug wifi ap
-        val ssid = "Pixel"
-        val password = "intrasonics"
-        val urlString = "http://192.168.4.1/cm?cmnd=Backlog%20SSID1%20$ssid%3B%20Password1%20$password%3B%20WifiConfig%205%3B%20restart%201"
+        val urlString = "http://192.168.4.1/cm?cmnd=Backlog%20SSID1%20${ssid}%3B%20Password1%20${password}%3B%20WifiConfig%205%3B%20restart%201"
         return try {
             Log.d("sendWifiConfig", "Attempting to send request to $urlString")
             val url = URL(urlString)
@@ -176,6 +218,52 @@ class MainViewModel : ViewModel() {
             Log.e("sendWifiConfig", "Exception occurred", e)
             "Error: ${e.localizedMessage ?: "An unknown error occurred"}"
         }
+    }
+    @RequiresApi(33)
+    fun turnOnHotspot(context: Context): String {
+        // TODO:
+        //  1. Investigate if we could use an Andorid API to turn on Local only hotspot automatically
+        // 2. Investigate if the ssid and password above can be set to the hotspot
+        // 3. Investigate if we can reliably restart the hotspot with the same ssid and password
+        startLocalOnlyHotspotWithConfig(
+            context = context,
+            config = UnhiddenSoftApConfigurationBuilder()
+                .setSsid("students-rock")
+                .setAutoshutdownEnabled(false)
+                .setPassphrase(passphrase="very-secure", securityType=SoftApConfiguration.SECURITY_TYPE_WPA2_PSK)
+                .build(),
+            executor = null,
+            callback = object : WifiManager.LocalOnlyHotspotCallback() {
+                override fun onStarted(result: WifiManager.LocalOnlyHotspotReservation) {
+                    super.onStarted(result)
+                    Log.d("Hotspot", "Hotspot started")
+                }
+
+                override fun onStopped() {
+                    super.onStopped()
+                    Log.d("Hotspot", "Hotspot stopped")
+                }
+
+                override fun onFailed(reason: Int) {
+                    super.onFailed(reason)
+                    Log.d("Hotspot", "Hotspot failed")
+                }
+            })
+
+        return "starting a newhotspot connection..."
+    }
+    @SuppressLint("NewApi")
+    fun startLocalOnlyHotspotWithConfig(
+        context: Context,
+        config: SoftApConfiguration,
+        executor: Executor?,
+        callback: WifiManager.LocalOnlyHotspotCallback
+    ) {
+        val wifiManager = context.applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
+        WifiManager::class.java.getMethod(
+            "startLocalOnlyHotspot", SoftApConfiguration::class.java, Executor::class.java,
+            WifiManager.LocalOnlyHotspotCallback::class.java,
+        ).invoke(wifiManager, config, executor, callback)
     }
 
     fun sendMQTTConfig(onResult: (String) -> Unit) {
@@ -262,9 +350,9 @@ class MainViewModel : ViewModel() {
     }
 }
 
-
+@RequiresApi(Build.VERSION_CODES.TIRAMISU)
 @Composable
-fun SmartPlugConfigApp(viewModel: MainViewModel = viewModel()) {
+fun SmartPlugConfigApp(viewModel: MainViewModel = viewModel(), activity: MainActivity, plugWifiNetworks: SnapshotStateList<String>) {
     var currentTextOutput by remember { mutableStateOf("output") }
     val context = LocalContext.current
 
@@ -272,18 +360,21 @@ fun SmartPlugConfigApp(viewModel: MainViewModel = viewModel()) {
         textToDisplay = currentTextOutput,
         setCurrentTextOutput = { currentTextOutput = it },
         context = context,
-        viewModel = viewModel
+        viewModel = viewModel,
+        activity = activity,
     )
 }
 
 
+@RequiresApi(Build.VERSION_CODES.TIRAMISU)
 @Composable
 fun ButtonsWithTextOutput(
     textToDisplay: String,
     setCurrentTextOutput: (String) -> Unit,
     context: Context,
     viewModel: MainViewModel,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    activity: MainActivity,
 ) {
     val ipsosBlue = Color(0xFF0033A0) // Ipsos Blue color
     val ipsosGreen = Color(0xFF00B140) // Ipsos Green color
