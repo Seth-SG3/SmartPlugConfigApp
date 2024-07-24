@@ -325,17 +325,59 @@ class MainViewModel : ViewModel() {
     }
 
     fun turnOnHotspot(context: Context): String {
-//         Create an Intent to open the hotspot settings
-       val intent = Intent(Settings.ACTION_WIRELESS_SETTINGS)
+        // TODO:
+        //  1. Investigate if we could use an Andorid API to turn on Local only hotspot automatically
+        // 2. Investigate if the ssid and password above can be set to the hotspot
+        // 3. Investigate if we can reliably restart the hotspot with the same ssid and password
+        startLocalOnlyHotspotWithConfig(
+            context = context,
+            config = SoftApConfiguration.Builder()
+                .setSsid("SmartPlugConfig")
+                .setPassphrase("password")
+                .build(),
+            executor = null,
+            callback = object : WifiManager.LocalOnlyHotspotCallback() {
+                override fun onStarted(result: WifiManager.LocalOnlyHotspotReservation) {
+                    super.onStarted(result)
+                    Log.d("Hotspot", "Hotspot started")
+                }
 
-        // Check if there is an activity that can handle this intent
-        if (intent.resolveActivity(context.packageManager) != null) {
-            // Start the settings activity
-            context.startActivity(intent)
-            return "Opening hotspot settings..."
-        } else {
-            return "Unable to open hotspot settings."
-        }
+                override fun onStopped() {
+                    super.onStopped()
+                    Log.d("Hotspot", "Hotspot stopped")
+                }
+
+                override fun onFailed(reason: Int) {
+                    super.onFailed(reason)
+                    Log.d("Hotspot", "Hotspot failed")
+                }
+            }
+
+//
+//
+////         Create an Intent to open the hotspot settings
+//       val intent = Intent(Settings.ACTION_WIRELESS_SETTINGS)
+//
+//        // Check if there is an activity that can handle this intent
+//        if (intent.resolveActivity(context.packageManager) != null) {
+//            // Start the settings activity
+//            context.startActivity(intent)
+//            return "Opening hotspot settings..."
+//        } else {
+//            return "Unable to open hotspot settings."
+//        }
+    }
+    fun startLocalOnlyHotspotWithConfig(
+        context: Context,
+        config: SoftApConfiguration,
+        executor: Executor?,
+        callback: WifiManager.LocalOnlyHotspotCallback
+    ) {
+        val wifiManager = context.applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
+        WifiManager::class.java.getMethod(
+            "startLocalOnlyHotspot", SoftApConfiguration::class.java, Executor::class.java,
+            WifiManager.LocalOnlyHotspotCallback::class.java,
+        ).invoke(wifiManager, config, executor, callback)
     }
 
     fun ipScan(): String {
