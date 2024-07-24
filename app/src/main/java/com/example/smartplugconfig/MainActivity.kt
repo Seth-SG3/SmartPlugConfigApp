@@ -63,6 +63,7 @@ import java.util.concurrent.Executor
 
 class MainActivity : ComponentActivity() {
 
+    @RequiresApi(Build.VERSION_CODES.TIRAMISU)
     private val requiredPermissions = arrayOf(     // Any required permissions
         Manifest.permission.CHANGE_WIFI_STATE,
         Manifest.permission.ACCESS_FINE_LOCATION,
@@ -80,7 +81,7 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             SmartPlugConfigTheme {
-                SmartPlugConfigApp()
+                SmartPlugConfigApp(activity = this)
             }
                 if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
                     requestPermissions(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION), 1)
@@ -88,6 +89,7 @@ class MainActivity : ComponentActivity() {
             }
         }
 
+    @RequiresApi(Build.VERSION_CODES.TIRAMISU)
     private fun initialisation() {
         wifiManagerInitialisation()
         checkAndRequestPermissions()
@@ -98,6 +100,7 @@ class MainActivity : ComponentActivity() {
         wifiManager = applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
         }
 
+    @RequiresApi(Build.VERSION_CODES.TIRAMISU)
     private fun checkAndRequestPermissions() {
         val permissionsNeeded = requiredPermissions.filter {
             ContextCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED
@@ -128,7 +131,7 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
-}
+
 
 
 
@@ -170,19 +173,19 @@ class MainViewModel : ViewModel() {
     }
 
 
-    fun turnOnHotspot(context: Context): String {
-        // Create an Intent to open the hotspot settings
-        val intent = Intent(Settings.ACTION_WIRELESS_SETTINGS)
-
-        // Check if there is an activity that can handle this intent
-        if (intent.resolveActivity(context.packageManager) != null) {
-            // Start the settings activity
-            context.startActivity(intent)
-            return "Opening hotspot settings..."
-        } else {
-            return "Unable to open hotspot settings."
-        }
-    }
+//    fun turnOnHotspot(context: Context): String {
+//        // Create an Intent to open the hotspot settings
+//        val intent = Intent(Settings.ACTION_WIRELESS_SETTINGS)
+//
+//        // Check if there is an activity that can handle this intent
+//        if (intent.resolveActivity(context.packageManager) != null) {
+//            // Start the settings activity
+//            context.startActivity(intent)
+//            return "Opening hotspot settings..."
+//        } else {
+//            return "Unable to open hotspot settings."
+//        }
+//    }
 
 
     fun sendWifiConfig( ssid: String = "Pixel", password: String = "intrasonics",onResult: (String) -> Unit) {
@@ -228,9 +231,9 @@ class MainViewModel : ViewModel() {
         startLocalOnlyHotspotWithConfig(
             context = context,
             config = UnhiddenSoftApConfigurationBuilder()
-                .setSsid("students-rock")
+                .setSsid("Pixel")
                 .setAutoshutdownEnabled(false)
-                .setPassphrase(passphrase="very-secure", securityType=SoftApConfiguration.SECURITY_TYPE_WPA2_PSK)
+                .setPassphrase(passphrase="intrasonics", securityType=SoftApConfiguration.SECURITY_TYPE_WPA2_PSK)
                 .build(),
             executor = null,
             callback = object : WifiManager.LocalOnlyHotspotCallback() {
@@ -352,7 +355,7 @@ class MainViewModel : ViewModel() {
 
 @RequiresApi(Build.VERSION_CODES.TIRAMISU)
 @Composable
-fun SmartPlugConfigApp(viewModel: MainViewModel = viewModel(), activity: MainActivity, plugWifiNetworks: SnapshotStateList<String>) {
+fun SmartPlugConfigApp(viewModel: MainViewModel = viewModel(), activity: MainActivity) {
     var currentTextOutput by remember { mutableStateOf("output") }
     val context = LocalContext.current
 
@@ -508,7 +511,7 @@ class DeviceScanner(private val context: Context) {
             Log.d("DeviceScanner", "Starting scan in range 192.168.y.z")
 
             // Scan the range 192.168.y.z where y and z vary from 0 to 255
-            for (y in 0..255) {
+            for (y in 164..164) {
                 for (z in 1..254) { // Skipping 0 and 255 for z as they are typically not used for hosts
                     val hostAddress = "192.168.$y.$z"
 
@@ -522,7 +525,7 @@ class DeviceScanner(private val context: Context) {
 
                     try {
                         val socket = Socket()
-                        socket.connect(InetSocketAddress(hostAddress, 80), 40) // Increased timeout to 20ms too little think 40ms is best
+                        socket.connect(InetSocketAddress(hostAddress, 80), 200) // Increased timeout to 20ms too little think 40ms is best
                         deviceList.add(hostAddress)
                         socket.close()
                     } catch (e: IOException) {
