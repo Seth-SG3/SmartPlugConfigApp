@@ -15,7 +15,6 @@ import android.net.wifi.WifiManager
 import android.net.wifi.WifiNetworkSpecifier
 import android.os.AsyncTask
 import android.os.Bundle
-import android.provider.Settings
 import android.util.Log
 import android.widget.Toast
 import androidx.activity.ComponentActivity
@@ -70,6 +69,8 @@ import android.net.wifi.SoftApConfiguration
 import android.os.Build
 import androidx.annotation.RequiresApi
 import com.example.smartplugconfig.hotspot.UnhiddenSoftApConfigurationBuilder
+import java.net.Inet4Address
+import java.net.NetworkInterface
 import java.util.concurrent.Executor
 
 class MainActivity : ComponentActivity() {
@@ -102,8 +103,9 @@ class MainActivity : ComponentActivity() {
     private fun initialisation() {
         wifiManagerInitialisation()
         checkAndRequestPermissions()
-
     }
+
+
 
     private fun wifiManagerInitialisation(){
         wifiManager = applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
@@ -205,7 +207,7 @@ class MainActivity : ComponentActivity() {
             "Connected to Wifi $ssid",
             Toast.LENGTH_SHORT
         ).show()
-        status(state+2)
+        status(state+1)
     }
     fun connectionFailed(ssid : String, status: (Int) -> Unit, state : Int){
         Toast.makeText(
@@ -213,7 +215,7 @@ class MainActivity : ComponentActivity() {
             "Connection to WiFi failed, please retry $ssid",
             Toast.LENGTH_LONG
         ).show()
-        status(state+1)
+        status(state)
     }
 
     @SuppressLint("MissingPermission")
@@ -230,17 +232,19 @@ class MainViewModel : ViewModel() {
         _ipAddress.value = ip
     }
 
-    fun scanDevices(context: Context, onScanCompleted: (String?) -> Unit) {
+    fun scanDevices(context: Context, status: (Int) -> Unit, onScanCompleted: (String?) -> Unit) {
         val deviceScanner = DeviceScanner(context)
         deviceScanner.scanDevices(object : DeviceScanner.ScanCallback {
             override fun onScanCompleted(devices: List<String>) {
                 val result = if (devices.isEmpty()) {
                     "No devices found"
+                    status(1)
                 } else {
                     devices.joinToString("\\n")
+                    status(6)
                 }
-                _ipAddress.value = result
-                onScanCompleted(result)
+                _ipAddress.value = result.toString()
+                onScanCompleted(result.toString())
             }
         })
     }
@@ -279,20 +283,17 @@ class MainViewModel : ViewModel() {
         }
     }
 
-    fun connectPlugToMifi(activity: MainActivity, status: (Int) -> Unit, ssid: String, password: String) {
-        if (activity.mifiNetworks.size == 1) {
-            this.sendWifiConfig(ssid, password){
-                result -> if (result.contains("error", ignoreCase = true)){
-                    Log.e("Error", "Couldn't connect plug to MiFi")
+    fun connectPlugToNetwork
+                (activity: MainActivity, status: (Int) -> Unit, ssid: String, password: String) {
+            this.sendWifiConfig(ssid, password) { result ->
+                if (result.contains("error", ignoreCase = true)) {
+                    Log.e("Error", "Couldn't connect plug to Network")
                     status(1)
-                }else{
-                    Log.d("Success", "Plug and MiFi are connected")
-                    status(6)
+                } else {
+                    Log.d("Success", "Plug and Network are connected")
+                    status(4)
+                }
             }
-            }
-        }else{
-            Log.e("Error", "Length of MiFi should be one")
-        }
     }
 
     fun sendWifiConfig( ssid: String = "Pixel", password: String = "intrasonics",onResult: (String) -> Unit) {
@@ -330,23 +331,30 @@ class MainViewModel : ViewModel() {
         }
     }
     @RequiresApi(33)
-    fun turnOnHotspot(context: Context): String {
+    fun turnOnHotspot(context: Context, ssid: String, password: String, status: (Int) -> Unit): String {
         // TODO:
-        //  1. Investigate if we could use an Andorid API to turn on Local only hotspot automatically
+        //  1. Investigate if we could use an Android API to turn on Local only hotspot automatically
         // 2. Investigate if the ssid and password above can be set to the hotspot
         // 3. Investigate if we can reliably restart the hotspot with the same ssid and password
+        Log.d("Hotspot", "This is the hotspot starting")
         startLocalOnlyHotspotWithConfig(
             context = context,
             config = UnhiddenSoftApConfigurationBuilder()
-                .setSsid("students-rock")
+                .setSsid(ssid)
                 .setAutoshutdownEnabled(false)
-                .setPassphrase(passphrase="very-secure", securityType=SoftApConfiguration.SECURITY_TYPE_WPA2_PSK)
+                .setPassphrase(passphrase=password, securityType=SoftApConfiguration.SECURITY_TYPE_WPA2_PSK)
                 .build(),
             executor = null,
             callback = object : WifiManager.LocalOnlyHotspotCallback() {
                 override fun onStarted(result: WifiManager.LocalOnlyHotspotReservation) {
                     super.onStarted(result)
+                    status(1)
                     Log.d("Hotspot", "Hotspot started")
+                    Toast.makeText(
+                        context,
+                        "Hotspot started successfully",
+                        Toast.LENGTH_LONG
+                    ).show()
                 }
 
                 override fun onStopped() {
@@ -357,18 +365,25 @@ class MainViewModel : ViewModel() {
                 override fun onFailed(reason: Int) {
                     super.onFailed(reason)
                     Log.d("Hotspot", "Hotspot failed")
+                    Toast.makeText(
+                        context,
+                        "Hotspot failed to start",
+                        Toast.LENGTH_LONG
+                    ).show()
+                    status(1)
                 }
             })
 
-        return "starting a newhotspot connection..."
+        return "starting a new hotspot connection..."
     }
+
     @SuppressLint("NewApi")
     fun startLocalOnlyHotspotWithConfig(
         context: Context,
         config: SoftApConfiguration,
         executor: Executor?,
         callback: WifiManager.LocalOnlyHotspotCallback
-    ) {
+        ) {
         val wifiManager = context.applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
         WifiManager::class.java.getMethod(
             "startLocalOnlyHotspot", SoftApConfiguration::class.java, Executor::class.java,
@@ -416,49 +431,92 @@ class MainViewModel : ViewModel() {
         }
     }
 
-    fun getPowerReading(onResult: (String) -> Unit) {
+    @RequiresApi(Build.VERSION_CODES.TIRAMISU)
+    fun getPowerReading(status: (Int) -> Unit, ssid: String, password: String, context: Context, onResult: (String) -> Unit) {
         viewModelScope.launch {
-            val result = getPowerReadingInternal()
+            val result = getPowerReadingInternal(status = status, ssid = ssid, password = password,context)
             onResult(result)
         }
     }
 
-    private suspend fun getPowerReadingInternal(): String {
-        val ip = _ipAddress.value
+    @RequiresApi(Build.VERSION_CODES.TIRAMISU)
+    private suspend fun getPowerReadingInternal( status: (Int) -> Unit, ssid: String, password:String,context: Context): String {        val ip = _ipAddress.value
         val urlString = "http://${ip}/cm?cmnd=Status%208"
-        return try {
-            Log.d("getPowerReading", "Attempting to send request to $urlString")
-            val url = URL(urlString)
-            withContext(Dispatchers.IO) {
-                with(url.openConnection() as HttpURLConnection) {
-                    requestMethod = "GET"
-                    Log.d("getPowerReading", "Request method set to $requestMethod")
+        var attempts = 0
 
-                    val responseCode = responseCode
-                    Log.d("getPowerReading", "Response code: $responseCode")
-                    if (responseCode == HttpURLConnection.HTTP_OK) {
-                        val response = inputStream.bufferedReader().use(BufferedReader::readText)
-                        Log.d("getPowerReading", "Response: $response")
+        while (attempts < 3) {
+            if (isLocalOnlyHotspotEnabled(context)) {
+                return try {
+                    Log.d("getPowerReading", "Attempting to send request to $urlString")
+                    val url = URL(urlString)
+                    withContext(Dispatchers.IO) {
+                        with(url.openConnection() as HttpURLConnection) {
+                            requestMethod = "GET"
+                            Log.d("getPowerReading", "Request method set to $requestMethod")
 
-                        // Parse the JSON response
-                        val jsonObject = JSONObject(response)
-                        val statusSNS = jsonObject.getJSONObject("StatusSNS")
-                        val energy = statusSNS.getJSONObject("ENERGY")
-                        val power = energy.getInt("Power")
+                            val responseCode = responseCode
+                            Log.d("getPowerReading", "Response code: $responseCode")
+                            if (responseCode == HttpURLConnection.HTTP_OK) {
+                                val response =
+                                    inputStream.bufferedReader().use(BufferedReader::readText)
+                                Log.d("getPowerReading", "Response: $response")
 
-                        // Return the formatted string
-                        "Power: $power Watts"
-                    } else {
-                        "HTTP error code: $responseCode"
+                                // Parse the JSON response
+                                val jsonObject = JSONObject(response)
+                                val statusSNS = jsonObject.getJSONObject("StatusSNS")
+                                val energy = statusSNS.getJSONObject("ENERGY")
+                                val power = energy.getInt("Power")
+
+                                // Return the formatted string
+                                return@withContext "Power: $power Watts"
+                            } else {
+                                return@withContext "HTTP error code: $responseCode"
+                            }
+                        }
+                    }
+                } catch (e: Exception) {
+                    val errorMessage = "Error: ${e.localizedMessage ?: "An unknown error occurred"}"
+                    Log.e("getPowerReading", errorMessage, e)
+                    return errorMessage
+                }
+            } else {
+                turnOnHotspot(context, ssid = ssid, password = password, status = status)
+                delay(3000)
+                attempts++
+            }
+        }
+        return "Unable to send request after 3 attempts"
+    }
+    //is only actually checking if device has ip but wifi should never be on so i think is ok for now at least for soak testing
+    private fun isLocalOnlyHotspotEnabled(context: Context): Boolean {
+        val wifiManager =
+            context.applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
+
+        try {
+            val interfaces = NetworkInterface.getNetworkInterfaces()
+            while (interfaces.hasMoreElements()) {
+                val networkInterface = interfaces.nextElement()
+                val addresses = networkInterface.inetAddresses
+                while (addresses.hasMoreElements()) {
+                    val address = addresses.nextElement()
+                    if (!address.isLoopbackAddress && address is Inet4Address) {
+                        Log.d(
+                            "isLocalOnlyHotspotEnabled",
+                            "Device IP Address: ${address.hostAddress}"
+                        )
+                        return true
                     }
                 }
             }
         } catch (e: Exception) {
-            val errorMessage = "Error: ${e.localizedMessage ?: "An unknown error occurred"}"
-            Log.e("getPowerReading", errorMessage, e)
-            errorMessage
+            Log.d("isLocalOnlyHotspotEnabled", "Device does not have an IP address")
+            return false
         }
+        Log.d("isLocalOnlyHotspotEnabled", "Cannot get IP address")
+        return false
+
     }
+
 }
 
 @RequiresApi(Build.VERSION_CODES.TIRAMISU)
@@ -495,6 +553,10 @@ fun ButtonsWithTextOutput(
     val ipsosGreen = Color(0xFF00B140) // Ipsos Green color
     var isScanning by remember { mutableStateOf(false) }
     var loadingText by remember { mutableStateOf("Scanning") }
+
+    val ssid = "Network Testing"
+    val password = "1234567890"
+
     // LaunchedEffect to animate the loading text
     LaunchedEffect(isScanning) {
         while (isScanning) {
@@ -532,56 +594,12 @@ fun ButtonsWithTextOutput(
                 ) {
                     Text("Connect to Plug", color = Color.White)
                 }
-                Spacer(modifier = Modifier.height(20.dp))
-                Button(onClick = {
-                    viewModel.sendWifiConfig { result ->
-                        setCurrentTextOutput(result)
-                    }
-                },            colors = ButtonDefaults.buttonColors(containerColor = ipsosBlue) // Set button color
-                ) {
-                    Text("Send Wifi config", color = Color.White)
-                }
-                Spacer(modifier = Modifier.height(20.dp))
-                Button(onClick = {
-                    val result = viewModel.turnOnHotspot(context)
-                    setCurrentTextOutput(result)
-                },
-                    colors = ButtonDefaults.buttonColors(containerColor = ipsosBlue) // Set button color
-                ) {
-                    Text("Switch on Hotspot", color = Color.White)
-                }
-                Spacer(modifier = Modifier.height(20.dp))
-                Button(
-                    onClick = {
-                    isScanning = true
-                    viewModel.scanDevices(context) { result ->
-                        isScanning = false
-                        if (result != null) {
-                            setCurrentTextOutput(result)
-                        }
-                        result?.let { ip -> viewModel.setIpAddress(ip) } // Set the IP address in the ViewModel.
 
-                    }
-                },
-                    colors = ButtonDefaults.buttonColors(containerColor = ipsosBlue) // Set button color
-                ) {
-                    Text("Find IP address of plug", color = Color.White)
-                }
                 Spacer(modifier = Modifier.height(20.dp))
+
                 Button(
                     onClick = {
-                    viewModel.sendMQTTConfig { result ->
-                        setCurrentTextOutput(result)
-                    }
-                },
-                    colors = ButtonDefaults.buttonColors(containerColor = ipsosBlue)
-                ) {
-                    Text("Send MQTT config", color = Color.White)
-                }
-                Spacer(modifier = Modifier.height(20.dp))
-                Button(
-                    onClick = {
-                    viewModel.getPowerReading { result ->
+                    viewModel.getPowerReading(context = context, status = {status = it}, ssid = ssid, password = password) { result ->
                         setCurrentTextOutput(result)
                     }
                 },
@@ -609,57 +627,41 @@ fun ButtonsWithTextOutput(
             )
         }
         3 -> {
-            status = 2
-        }
-        4 -> {
-            // Choose MiFi Network
-           viewModel.ChooseMifiNetwork(
-               activity = activity,
-               status = {status = it})
-
-           }
-        5 -> {
-            // Send plug the mifi details
-
-
             Text(
                 text = "Connecting plug to MiFi Device",
                 fontSize = 20.sp, // Increase text size
                 fontWeight = FontWeight.Bold, // Make text bold
                 color = Color.Black // Text color
             )
-            val mifiSsid = activity.mifiNetworks.single()
-            viewModel.connectPlugToMifi(
+
+            viewModel.connectPlugToNetwork(
                 activity = activity,
                 status =  {status = it},
-                ssid = mifiSsid,
-                password = "1234567890"
+                ssid = ssid,
+                password = password
             )
-
-
+        }
+        4 -> {
+            val result = viewModel.turnOnHotspot(context, ssid = ssid, password = password, status =  {status = it})
+            setCurrentTextOutput(result)
+        }
+        5 -> {
+            isScanning = true
+            viewModel.scanDevices(context = context, status = {status = it}) { result ->
+                isScanning = false
+                if (result != null) {
+                    setCurrentTextOutput(result)
+                }
+                result?.let { ip -> viewModel.setIpAddress(ip) } // Set the IP address in the ViewModel.
+            }
         }
         6 -> {
-            // Connect to mifi device
-            Text(
-                text = "Connecting phone to MiFi device",
-                fontSize = 20.sp, // Increase text size
-                fontWeight = FontWeight.Bold, // Make text bold
-                color = Color.Black // Text color
-            )
-            val mifiSsid = activity.mifiNetworks.single()
-
-            activity.connectToWifi(ssid = mifiSsid, password = "1234567890", status = {status = it}, state = status)
+            viewModel.getPowerReading(status = {status = it}, ssid = ssid, password = password, context = context) { result ->
+                setCurrentTextOutput(result)
+            }
             status = 1
 
-        }
-        7-> {
-            status = 4
-        }
-        8->{
-            status = 1
-        }
-
-
+           }
         else -> {}
     }
 }
@@ -679,11 +681,9 @@ class DeviceScanner(private val context: Context) {
         @Deprecated("Deprecated in Java")
         override fun doInBackground(vararg params: Void?): List<String> {
             val deviceList = mutableListOf<String>()
-            val wifiManager = context.applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
-
             Log.d("DeviceScanner", "Starting scan in range 192.168.y.z")
 
-            // Scan the range 192.168.y.z where y and z vary from 0 to 255
+            for (y in 85..85) {// Scan the range 192.168.y.z where y and z vary from 0 to 255
                 for (z in 2..254) { // Skipping 0 and 255 for z as they are typically not used for hosts
                     val hostAddress = "192.168.100.$z"
 
@@ -692,19 +692,22 @@ class DeviceScanner(private val context: Context) {
 
                     // Check if the specific IP address is being scanned
                     //if (hostAddress == "192.168.240.238") {
-                        //Log.d("DeviceScanner", "Specific IP 192.168.240.238 is being scanned")
+                    //Log.d("DeviceScanner", "Specific IP 192.168.240.238 is being scanned")
                     //}
 
                     try {
                         val socket = Socket()
-                        socket.connect(InetSocketAddress(hostAddress, 80), 40) // Increased timeout to 20ms too little think 40ms is best
+                        socket.connect(
+                            InetSocketAddress(hostAddress, 80),
+                            100
+                        ) // Increased timeout to 20ms too little think 40ms is best
                         deviceList.add(hostAddress)
                         socket.close()
                     } catch (e: IOException) {
                         Log.d("DeviceScanner", "Failed to connect to $hostAddress: ${e.message}")
                     }
                 }
-
+            }
             return deviceList
         }
 
