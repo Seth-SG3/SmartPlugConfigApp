@@ -359,6 +359,7 @@ class MainViewModel : ViewModel() {
 
         return "starting a newhotspot connection..."
     }
+    @SuppressLint("NewApi")
     fun startLocalOnlyHotspotWithConfig(
         context: Context,
         config: SoftApConfiguration,
