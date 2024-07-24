@@ -6,8 +6,10 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.wifi.SoftApConfiguration
 import android.net.wifi.WifiManager
 import android.os.AsyncTask
+import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
 import android.util.Log
@@ -16,6 +18,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.annotation.RequiresApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -43,6 +46,7 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.smartplugconfig.hotspot.UnhiddenSoftApConfigurationBuilder
 import com.example.smartplugconfig.ui.theme.SmartPlugConfigTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -52,14 +56,13 @@ import org.json.JSONObject
 import java.io.BufferedReader
 import java.io.IOException
 import java.net.HttpURLConnection
+import java.net.Inet4Address
 import java.net.InetSocketAddress
+import java.net.NetworkInterface
 import java.net.Socket
 import java.net.URL
-import android.net.wifi.SoftApConfiguration
-import android.os.Build
-import androidx.annotation.RequiresApi
-import com.example.smartplugconfig.hotspot.UnhiddenSoftApConfigurationBuilder
 import java.util.concurrent.Executor
+
 
 class MainActivity : ComponentActivity() {
 
@@ -502,35 +505,33 @@ class DeviceScanner(private val context: Context) {
 
     @SuppressLint("StaticFieldLeak")
     inner class ScanTask(private val callback: ScanCallback?) : AsyncTask<Void, Void, List<String>>() {
+
         @Deprecated("Deprecated in Java")
         override fun doInBackground(vararg params: Void?): List<String> {
             val deviceList = mutableListOf<String>()
             val wifiManager = context.applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
             val dhcpInfo = wifiManager.dhcpInfo
 
-            Log.d("DeviceScanner", "Starting scan in range 192.168.y.z")
+            // Get the device's IP address
+            val deviceIpAddress = getDeviceIpAddress() ?: return emptyList()
+            val thirdOctet = deviceIpAddress.split(".")[2]
 
-            // Scan the range 192.168.y.z where y and z vary from 0 to 255
-            for (y in 164..164) {
-                for (z in 1..254) { // Skipping 0 and 255 for z as they are typically not used for hosts
-                    val hostAddress = "192.168.$y.$z"
+            Log.d("DeviceScanner", "Starting scan in range 192.168.$thirdOctet.z")
 
-                    // Log each host address being scanned
-                    Log.d("DeviceScanner", "Scanning IP: $hostAddress")
+            // Scan the range 192.168.x.1 to 192.168.x.254
+            for (z in 1..254) { // Skipping 0 and 255 for z as they are typically not used for hosts
+                val hostAddress = "192.168.$thirdOctet.$z"
 
-                    // Check if the specific IP address is being scanned
-                    //if (hostAddress == "192.168.240.238") {
-                        //Log.d("DeviceScanner", "Specific IP 192.168.240.238 is being scanned")
-                    //}
+                // Log each host address being scanned
+                Log.d("DeviceScanner", "Scanning IP: $hostAddress")
 
-                    try {
-                        val socket = Socket()
-                        socket.connect(InetSocketAddress(hostAddress, 80), 200) // Increased timeout to 20ms too little think 40ms is best
-                        deviceList.add(hostAddress)
-                        socket.close()
-                    } catch (e: IOException) {
-                        Log.d("DeviceScanner", "Failed to connect to $hostAddress: ${e.message}")
-                    }
+                try {
+                    val socket = Socket()
+                    socket.connect(InetSocketAddress(hostAddress, 80), 200) // Increased timeout to 200ms
+                    deviceList.add(hostAddress)
+                    socket.close()
+                } catch (e: IOException) {
+                    Log.d("DeviceScanner", "Failed to connect to $hostAddress: ${e.message}")
                 }
             }
             return deviceList
@@ -539,6 +540,25 @@ class DeviceScanner(private val context: Context) {
         @Deprecated("Deprecated in Java")
         override fun onPostExecute(result: List<String>) {
             callback?.onScanCompleted(result)
+        }
+
+        private fun getDeviceIpAddress(): String? {
+            try {
+                val interfaces = NetworkInterface.getNetworkInterfaces()
+                while (interfaces.hasMoreElements()) {
+                    val networkInterface = interfaces.nextElement()
+                    val addresses = networkInterface.inetAddresses
+                    while (addresses.hasMoreElements()) {
+                        val address = addresses.nextElement()
+                        if (!address.isLoopbackAddress && address is Inet4Address) {
+                            return address.hostAddress
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e("DeviceScanner", "Failed to get device IP address: ${e.message}")
+            }
+            return null
         }
     }
 
