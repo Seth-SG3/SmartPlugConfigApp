@@ -57,32 +57,35 @@ configurations.all {
 
 
 dependencies {
+    val composeBom = platform(libs.androidx.compose.bom)
+    implementation(composeBom)
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
-    implementation(platform(libs.androidx.compose.bom))
-    implementation(libs.androidx.ui) {
-        exclude(group= "androidx.compose.ui", module= "ui-desktop")
-    }
-    implementation(libs.androidx.ui.graphics){
-        exclude(group= "androidx.compose.ui", module= "ui-desktop")
-    }
-    implementation(libs.androidx.ui.tooling.preview){
-        exclude (group= "androidx.compose.ui", module= "ui-desktop")
-    }
+//    implementation(platform(libs.androidx.compose.bom))
+//    implementation(libs.androidx.ui) {
+//        exclude(group= "androidx.compose.ui", module= "ui-desktop")
+//    }
+//    implementation(libs.androidx.ui.graphics){
+//        exclude(group= "androidx.compose.ui", module= "ui-desktop")
+//    }
+//    implementation(libs.androidx.ui.tooling.preview){
+//        exclude (group= "androidx.compose.ui", module= "ui-desktop")
+//    }
+    implementation ("androidx.compose.material3:material3")
+    implementation("androidx.compose.foundation:foundation")
+    implementation("androidx.compose.ui:ui")
+
+    // Android Studio Preview support
+    implementation("androidx.compose.ui:ui-tooling-preview")
+    //debugImplementation("androidx.compose.ui:ui-tooling")
     implementation(libs.androidx.material3)
-    implementation(libs.androidx.media3.common)
-    implementation(libs.androidx.appcompat)
-    implementation(libs.androidx.ui.desktop){
-        exclude(group= "androidx.compose.ui", module= "ui-android")
-    }
-    testImplementation(libs.junit)
-    androidTestImplementation(libs.androidx.junit)
-    androidTestImplementation(libs.androidx.espresso.core)
-    androidTestImplementation(platform(libs.androidx.compose.bom))
-    androidTestImplementation(libs.androidx.ui.test.junit4)
-    debugImplementation(libs.androidx.ui.tooling)
-    debugImplementation(libs.androidx.ui.test.manifest)
+    //implementation(libs.androidx.media3.common)
+    //implementation(libs.androidx.appcompat)
+//    implementation(libs.androidx.ui.desktop){
+//        exclude(group= "androidx.compose.ui", module= "ui-android")
+//    }
+    //implementation (platform("androidx.compose:compose-bom:2023.01.00"))
     implementation(libs.kotlinx.coroutines.core)
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
@@ -93,4 +96,14 @@ dependencies {
     implementation(libs.androidx.work.runtime.ktx)
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.compiler)
+
+    testImplementation(libs.junit)
+    androidTestImplementation(libs.androidx.junit)
+    androidTestImplementation(libs.androidx.espresso.core)
+    androidTestImplementation(platform(libs.androidx.compose.bom))
+    androidTestImplementation(libs.androidx.ui.test.junit4)
+    debugImplementation(libs.androidx.ui.tooling)
+    debugImplementation(libs.androidx.ui.test.manifest)
+
+
 }
