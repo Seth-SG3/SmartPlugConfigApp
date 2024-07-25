@@ -48,18 +48,34 @@ android {
         }
     }
 }
+configurations.all {
+    resolutionStrategy {
+        force ("org.jetbrains:annotations:23.0.0")
+        force ("androidx.compose.ui:ui-android:1.6.8")
+    }
+}
+
 
 dependencies {
-
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
     implementation(platform(libs.androidx.compose.bom))
-    implementation(libs.androidx.ui)
-    implementation(libs.androidx.ui.graphics)
-    implementation(libs.androidx.ui.tooling.preview)
+    implementation(libs.androidx.ui) {
+        exclude(group= "androidx.compose.ui", module= "ui-desktop")
+    }
+    implementation(libs.androidx.ui.graphics){
+        exclude(group= "androidx.compose.ui", module= "ui-desktop")
+    }
+    implementation(libs.androidx.ui.tooling.preview){
+        exclude (group= "androidx.compose.ui", module= "ui-desktop")
+    }
     implementation(libs.androidx.material3)
     implementation(libs.androidx.media3.common)
+    implementation(libs.androidx.appcompat)
+    implementation(libs.androidx.ui.desktop){
+        exclude(group= "androidx.compose.ui", module= "ui-android")
+    }
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
@@ -67,13 +83,14 @@ dependencies {
     androidTestImplementation(libs.androidx.ui.test.junit4)
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
-    implementation (libs.kotlinx.coroutines.core)
-    implementation (libs.kotlinx.coroutines.android)
-    implementation (libs.androidx.lifecycle.viewmodel.compose)
-    implementation (libs.okhttp)
+    implementation(libs.kotlinx.coroutines.core)
+    implementation(libs.kotlinx.coroutines.android)
+    implementation(libs.androidx.lifecycle.viewmodel.compose)
+    implementation(libs.okhttp)
     implementation(libs.kmqtt.common.jvm)
     implementation(libs.kmqtt.client.jvm)
     implementation(libs.kmqtt.broker.jvm)
-
-
+    implementation(libs.androidx.work.runtime.ktx)
+    implementation(libs.androidx.room.runtime)
+    implementation(libs.androidx.room.compiler)
 }
