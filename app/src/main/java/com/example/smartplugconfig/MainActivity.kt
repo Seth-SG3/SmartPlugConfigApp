@@ -348,13 +348,14 @@ class MainViewModel : ViewModel() {
             callback = object : WifiManager.LocalOnlyHotspotCallback() {
                 override fun onStarted(result: WifiManager.LocalOnlyHotspotReservation) {
                     super.onStarted(result)
-                    status(1)
+                    status(5)
                     Log.d("Hotspot", "Hotspot started")
                     Toast.makeText(
                         context,
                         "Hotspot started successfully",
                         Toast.LENGTH_LONG
                     ).show()
+
                 }
 
                 override fun onStopped() {
@@ -554,7 +555,7 @@ fun ButtonsWithTextOutput(
     var isScanning by remember { mutableStateOf(false) }
     var loadingText by remember { mutableStateOf("Scanning") }
 
-    val ssid = "Network Testing"
+    val ssid = "Network-Testing"
     val password = "1234567890"
 
     // LaunchedEffect to animate the loading text
@@ -594,7 +595,22 @@ fun ButtonsWithTextOutput(
                 ) {
                     Text("Connect to Plug", color = Color.White)
                 }
-
+                Spacer(modifier = Modifier.height(20.dp))
+                Button(
+                    onClick = {
+                        isScanning = true
+                        viewModel.scanDevices(context, {status = it}) { result ->
+                            isScanning = false
+                            if (result != null) {
+                                setCurrentTextOutput(result)
+                            }
+                            result?.let { ip -> viewModel.setIpAddress(ip) } // Set the IP address in the ViewModel.
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = ipsosBlue) // Set button color
+                ) {
+                    Text("Find IP address of plug", color = Color.White)
+                }
                 Spacer(modifier = Modifier.height(20.dp))
 
                 Button(
@@ -607,7 +623,6 @@ fun ButtonsWithTextOutput(
                 ) {
                     Text("Pull power data", color = Color.White)
                 }
-                Spacer(modifier = Modifier.height(20.dp))
                 Text(
                     text = if (isScanning) loadingText else textToDisplay,
                     fontSize = 20.sp, // Increase text size
@@ -643,6 +658,7 @@ fun ButtonsWithTextOutput(
         }
         4 -> {
             val result = viewModel.turnOnHotspot(context, ssid = ssid, password = password, status =  {status = it})
+            status = 1
             setCurrentTextOutput(result)
         }
         5 -> {
@@ -677,37 +693,36 @@ class DeviceScanner(private val context: Context) {
     }
 
     @SuppressLint("StaticFieldLeak")
-    inner class ScanTask(private val callback: ScanCallback?) : AsyncTask<Void, Void, List<String>>() {
+    inner class ScanTask(private val callback: ScanCallback?) :
+        AsyncTask<Void, Void, List<String>>() {
+
         @Deprecated("Deprecated in Java")
         override fun doInBackground(vararg params: Void?): List<String> {
             val deviceList = mutableListOf<String>()
-            Log.d("DeviceScanner", "Starting scan in range 192.168.y.z")
+            // Get the device's IP address
+            val deviceIpAddress = getDeviceIpAddress() ?: return emptyList()
+            val thirdOctet = deviceIpAddress.split(".")[2]
 
-            for (y in 85..85) {// Scan the range 192.168.y.z where y and z vary from 0 to 255
-                for (z in 2..254) { // Skipping 0 and 255 for z as they are typically not used for hosts
-                    val hostAddress = "192.168.100.$z"
+            Log.d("DeviceScanner", "Starting scan in range 192.168.$thirdOctet.z")
 
-                    // Log each host address being scanned
-                    Log.d("DeviceScanner", "Scanning IP: $hostAddress")
-
-                    // Check if the specific IP address is being scanned
-                    //if (hostAddress == "192.168.240.238") {
-                    //Log.d("DeviceScanner", "Specific IP 192.168.240.238 is being scanned")
-                    //}
-
-                    try {
-                        val socket = Socket()
-                        socket.connect(
-                            InetSocketAddress(hostAddress, 80),
-                            100
-                        ) // Increased timeout to 20ms too little think 40ms is best
-                        deviceList.add(hostAddress)
-                        socket.close()
-                    } catch (e: IOException) {
-                        Log.d("DeviceScanner", "Failed to connect to $hostAddress: ${e.message}")
-                    }
+            // Scan the range 192.168.x.1 to 192.168.x.254
+            for (z in 1..254) { // Skipping 0 and 255 for z as they are typically not used for hosts
+                val hostAddress = "192.168.$thirdOctet.$z"
+                // Log each host address being scanned
+                Log.d("DeviceScanner", "Scanning IP: $hostAddress")
+                try {
+                    val socket = Socket()
+                    socket.connect(
+                        InetSocketAddress(hostAddress, 80),
+                        40
+                    ) // Increased timeout to 20ms too little think 40ms is best
+                    deviceList.add(hostAddress)
+                    socket.close()
+                } catch (e: IOException) {
+                    Log.d("DeviceScanner", "Failed to connect to $hostAddress: ${e.message}")
                 }
             }
+
             return deviceList
         }
 
@@ -715,7 +730,27 @@ class DeviceScanner(private val context: Context) {
         override fun onPostExecute(result: List<String>) {
             callback?.onScanCompleted(result)
         }
+
+        private fun getDeviceIpAddress(): String? {
+            try {
+                val interfaces = NetworkInterface.getNetworkInterfaces()
+                while (interfaces.hasMoreElements()) {
+                    val networkInterface = interfaces.nextElement()
+                    val addresses = networkInterface.inetAddresses
+                    while (addresses.hasMoreElements()) {
+                        val address = addresses.nextElement()
+                        if (!address.isLoopbackAddress && address is Inet4Address) {
+                            return address.hostAddress
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e("DeviceScanner", "Failed to get device IP address: ${e.message}")
+            }
+            return null
+        }
     }
+
 
     interface ScanCallback {
         fun onScanCompleted(devices: List<String>)
