@@ -30,11 +30,21 @@ class MainViewModel : ViewModel() {
     private val _ipAddress = mutableStateOf<String?>(null)
     val ipAddress: State<String?> = _ipAddress
 
+    companion object {
+        @Volatile private var instance: MainViewModel? = null
+
+        fun getInstance(): MainViewModel =
+            instance ?: synchronized(this) {
+                instance ?: MainViewModel().also { instance = it }
+            }
+    }
+
+
     fun setIpAddress(ip: String) {
         _ipAddress.value = ip
     }
 
-    fun scanDevices(context: Context, onScanCompleted: (String?) -> Unit) {
+    fun scanDevices(context: Context, onScanCompleted: (String) -> Unit) {
         val deviceScanner = DeviceScanner(context)
         deviceScanner.scanDevices(object : DeviceScanner.ScanCallback {
             override fun onScanCompleted(devices: List<String>) {
@@ -119,12 +129,13 @@ class MainViewModel : ViewModel() {
         }
     }
 
+    private var isHotspotActive = false
+
     @RequiresApi(33)
     fun turnOnHotspot(context: Context): String {
-        // TODO:
-        //  1. Investigate if we could use an Andorid API to turn on Local only hotspot automatically
-        // 2. Investigate if the ssid and password above can be set to the hotspot
-        // 3. Investigate if we can reliably restart the hotspot with the same ssid and password
+        if (isLocalOnlyHotspotEnabled(context)) {
+            return "Hotspot is already active."
+        }
         startLocalOnlyHotspotWithConfig(
             context = context,
             config = UnhiddenSoftApConfigurationBuilder()
@@ -137,19 +148,22 @@ class MainViewModel : ViewModel() {
                 .build(),
             executor = null,
             callback = object : WifiManager.LocalOnlyHotspotCallback() {
-                override fun onStarted(result: WifiManager.LocalOnlyHotspotReservation) {
-                    super.onStarted(result)
+                override fun onStarted(reservation: WifiManager.LocalOnlyHotspotReservation) {
+                    super.onStarted(reservation)
+                    isHotspotActive = true
                     Log.d("Hotspot", "Hotspot started")
                 }
 
                 override fun onStopped() {
                     super.onStopped()
+                    isHotspotActive = false
                     Log.d("Hotspot", "Hotspot stopped")
                 }
 
                 override fun onFailed(reason: Int) {
                     super.onFailed(reason)
-                    Log.d("Hotspot", "Hotspot failed")
+                    isHotspotActive = false
+                    Log.d("Hotspot", "Hotspot failed with reason $reason")
                 }
             })
 

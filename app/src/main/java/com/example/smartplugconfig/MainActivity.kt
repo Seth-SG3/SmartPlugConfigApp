@@ -2,21 +2,16 @@ package com.example.smartplugconfig
 
 //noinspection UsingMaterialAndMaterial3Libraries
 import android.Manifest
-import android.annotation.SuppressLint
 import android.content.Context
+import android.content.Intent
 import android.content.pm.PackageManager
-import android.net.wifi.WifiManager
-import android.os.AsyncTask
 import android.os.Build
 import android.os.Bundle
-import android.util.Log
-import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.activity.viewModels
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
@@ -26,11 +21,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Text
-
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -42,21 +35,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
-import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.work.PeriodicWorkRequestBuilder
-import androidx.work.WorkManager
-import com.example.smartplugconfig.data.PowerReading
 import com.example.smartplugconfig.ui.theme.SmartPlugConfigTheme
-import com.example.smartplugconfig.workers.PowerReadingWorker
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
-import java.io.IOException
-import java.net.Inet4Address
-import java.net.InetSocketAddress
-import java.net.NetworkInterface
-import java.net.Socket
-import java.util.concurrent.TimeUnit
 
 
 class MainActivity : ComponentActivity() {
@@ -69,48 +50,32 @@ class MainActivity : ComponentActivity() {
         Manifest.permission.NEARBY_WIFI_DEVICES
     )
 
-    private val myViewModel: MainViewModel by viewModels()
-    lateinit var wifiManager: WifiManager
-    var mifiNetworks = mutableStateListOf<String>()
-    var plugWifiNetworks = mutableStateListOf<String>()
-
     @RequiresApi(Build.VERSION_CODES.TIRAMISU)
     override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
         initialisation()
-
+        super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+
+        val intent = Intent(this, PowerReadingService::class.java)
+        startService(intent)
+
+
         setContent {
             SmartPlugConfigTheme {
                 SmartPlugConfigApp(activity = this)
             }
-            if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-                requestPermissions(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION), 1)
+                if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+                    requestPermissions(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION), 1)
+                }
             }
         }
-        val workRequest = PeriodicWorkRequestBuilder<PowerReadingWorker>(1, TimeUnit.MINUTES)
-            .build()
-
-        WorkManager.getInstance(this).enqueue(workRequest)
-
-        //val textView: TextView = findViewById(R.id.textView)
-        lifecycleScope.launch {
-            val readings: List<PowerReading> = myViewModel.getAllReadings()
-            //textView.text = readings.joinToString("\n") { "${it.timestamp}: ${it.powerValue}" }
-        }
-    }
-
 
     @RequiresApi(Build.VERSION_CODES.TIRAMISU)
     private fun initialisation() {
-        wifiManagerInitialisation()
         checkAndRequestPermissions()
 
     }
 
-    private fun wifiManagerInitialisation(){
-        wifiManager = applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
-        }
 
     @RequiresApi(Build.VERSION_CODES.TIRAMISU)
     private fun checkAndRequestPermissions() {
