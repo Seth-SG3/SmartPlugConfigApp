@@ -9,11 +9,13 @@ import android.content.Intent
 import android.os.Build
 import android.os.Handler
 import android.os.IBinder
+import android.os.PowerManager
 import android.util.Log
 import androidx.annotation.RequiresApi
 import androidx.core.app.NotificationCompat
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -27,6 +29,7 @@ class PowerReadingService : Service() {
 
     private val handler = Handler()
     private val viewModel = MainViewModel.getInstance()
+    private lateinit var wakeLock: PowerManager.WakeLock
 
     private val runnable = object : Runnable {
         @RequiresApi(Build.VERSION_CODES.TIRAMISU)
@@ -43,11 +46,13 @@ class PowerReadingService : Service() {
         super.onCreate()
         startForegroundService()
         handler.post(runnable)
+        acquireWakeLock()
     }
 
     override fun onDestroy() {
         super.onDestroy()
         handler.removeCallbacks(runnable)
+        releaseWakeLock()
     }
 
     override fun onBind(intent: Intent?): IBinder? {
@@ -74,6 +79,19 @@ class PowerReadingService : Service() {
 
         startForeground(1, notification)
     }
+
+    private fun acquireWakeLock() {
+        val powerManager = getSystemService(Context.POWER_SERVICE) as PowerManager
+        wakeLock = powerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "PowerReadingService::WakeLock")
+        wakeLock.acquire()
+    }
+
+    private fun releaseWakeLock() {
+        if (wakeLock.isHeld) {
+            wakeLock.release()
+        }
+    }
+
 
     @RequiresApi(Build.VERSION_CODES.TIRAMISU)
     private suspend fun ensureIpAddressAndReadPower(context: Context) {

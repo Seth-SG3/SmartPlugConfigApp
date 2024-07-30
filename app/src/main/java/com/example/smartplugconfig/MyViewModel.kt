@@ -129,7 +129,7 @@ class MainViewModel : ViewModel() {
         }
     }
 
-    private var isHotspotActive = false
+
 
     @RequiresApi(33)
     fun turnOnHotspot(context: Context): String {
@@ -150,19 +150,16 @@ class MainViewModel : ViewModel() {
             callback = object : WifiManager.LocalOnlyHotspotCallback() {
                 override fun onStarted(reservation: WifiManager.LocalOnlyHotspotReservation) {
                     super.onStarted(reservation)
-                    isHotspotActive = true
                     Log.d("Hotspot", "Hotspot started")
                 }
 
                 override fun onStopped() {
                     super.onStopped()
-                    isHotspotActive = false
                     Log.d("Hotspot", "Hotspot stopped")
                 }
 
                 override fun onFailed(reason: Int) {
                     super.onFailed(reason)
-                    isHotspotActive = false
                     Log.d("Hotspot", "Hotspot failed with reason $reason")
                 }
             })
