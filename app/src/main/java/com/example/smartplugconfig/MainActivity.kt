@@ -7,6 +7,7 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
+
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -40,6 +41,7 @@ import com.example.smartplugconfig.ui.theme.SmartPlugConfigTheme
 import kotlinx.coroutines.delay
 
 
+
 class MainActivity : ComponentActivity() {
 
     @RequiresApi(Build.VERSION_CODES.TIRAMISU)
@@ -49,6 +51,8 @@ class MainActivity : ComponentActivity() {
         Manifest.permission.ACCESS_WIFI_STATE,
         Manifest.permission.NEARBY_WIFI_DEVICES
     )
+
+
 
     @RequiresApi(Build.VERSION_CODES.TIRAMISU)
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -60,6 +64,8 @@ class MainActivity : ComponentActivity() {
         startService(intent)
 
 
+
+
         setContent {
             SmartPlugConfigTheme {
                 SmartPlugConfigApp(activity = this)
@@ -69,6 +75,7 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+
 
     @RequiresApi(Build.VERSION_CODES.TIRAMISU)
     private fun initialisation() {
