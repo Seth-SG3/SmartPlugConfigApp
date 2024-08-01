@@ -2,6 +2,7 @@ package com.example.smartplugconfig
 
 //noinspection UsingMaterialAndMaterial3Libraries
 
+import MQTTClient
 import android.Manifest
 import android.app.AlarmManager
 import android.app.PendingIntent
@@ -41,6 +42,10 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.smartplugconfig.ui.theme.SmartPlugConfigTheme
 import kotlinx.coroutines.delay
+import mqtt.MQTTVersion
+import mqtt.Subscription
+import mqtt.packets.Qos
+import mqtt.packets.mqttv5.SubscriptionOptions
 import java.util.Calendar
 
 
@@ -76,6 +81,20 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+
+    private fun setupMQTTClient(){
+        val client = MQTTClient(
+            MQTTVersion.MQTT5,
+            "test.mosquitto.org",
+            1883,
+            null
+        ) {
+            println(it.payload?.toByteArray()?.decodeToString())
+        }
+        client.subscribe(listOf(Subscription("/randomTopic", SubscriptionOptions(Qos.EXACTLY_ONCE))))
+        client.publish(false, Qos.EXACTLY_ONCE, "/randomTopic", "hello".encodeToByteArray().toUByteArray())
+        client.run() // Blocking method, use step() if you don't want to block the thread
+    }
 
     private fun scheduleAlarm() {
         val alarmManager = getSystemService(Context.ALARM_SERVICE) as AlarmManager
