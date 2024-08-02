@@ -16,37 +16,45 @@ import mqtt.packets.mqttv5.SubscriptionOptions
 fun setupMQTTClient() {
     CoroutineScope(Dispatchers.Main).launch {
         withContext(Dispatchers.IO) {
-            val client = MQTTClient(
-                MQTTVersion.MQTT3_1_1,
-                "192.168.222.246",
-                1883,
-                null
-            ) {
-                println(it.payload?.toByteArray()?.decodeToString())
-            }
-            Log.d("MQTT", "Subscribing to topic...")
-            client.subscribe(
-                listOf(
-                    Subscription(
-                        "cmnd/randomTopic",
-                        SubscriptionOptions(Qos.EXACTLY_ONCE)
+            try {
+                val client = MQTTClient(
+                    MQTTVersion.MQTT3_1_1,
+                    "192.168.222.246",
+                    1883,
+                    null
+                ) {
+                    println(it.payload?.toByteArray()?.decodeToString())
+                }
+                Log.d("MQTT", "Subscribing to topic...")
+                client.subscribe(
+                    listOf(
+                        Subscription(
+                            "cmnd/randomTopic",
+                            SubscriptionOptions(Qos.EXACTLY_ONCE)
+                        )
                     )
                 )
-            )
-            Log.d("MQTT", "Subscribed to topic successfully.")
+                Log.d("MQTT", "Subscribed to topic successfully.")
 
-            Log.d("MQTT", "Publishing message...")
-            client.publish(
-                false,
-                Qos.EXACTLY_ONCE,
-                "cmnd/randomTopic/Power",
-                "Off".encodeToByteArray().toUByteArray()
-            )
-            Log.d("MQTT", "Message published successfully.")
+                Log.d("MQTT", "Publishing message...")
+                client.publish(
+                    false,
+                    Qos.EXACTLY_ONCE,
+                    "cmnd/randomTopic/Power",
+                    "TOGGLE".encodeToByteArray().toUByteArray()
+                )
+                Log.d("MQTT", "Message published successfully.")
 
-            Log.d("MQTT", "Running client step...")
-            client.run() // Blocking method, use step() if you don't want to block the thread.
-            Log.d("MQTT", "Client step completed.")
+                Log.d("MQTT", "Running client step...")
+                client.run() // Blocking method, use step() if you don't want to block the thread.
+                Log.d("MQTT", "Client step completed.")
+            }
+            catch (e: Exception) {
+                Log.e("MQTT", "Exception: ${e.message}", e)
+
+            }
+
+
 
         }
     }
@@ -55,9 +63,15 @@ fun setupMQTTClient() {
 fun setupMqttBroker(){
     CoroutineScope(Dispatchers.Main).launch {
         withContext(Dispatchers.IO) {
-            Log.d("MQTT", "Running broker step...")
-            Broker().listen()
-            Log.d("MQTT", "broker setup :)")
+            try {
+                Log.d("MQTT", "Running broker step...")
+                Broker().listen()
+                Log.d("MQTT", "broker setup :)")
+            }
+            catch (e: Exception) {
+                Log.e("MQTT", "Exception: ${e.message}", e)
+
+            }
 
         }
     }
