@@ -44,7 +44,7 @@ fun setupMQTTClient() {
             Log.d("MQTT", "Message published successfully.")
 
             Log.d("MQTT", "Running client step...")
-            client.step() // Blocking method, use step() if you don't want to block the thread
+            client.step() // Blocking method, use step() if you don't want to block the thread.
             Log.d("MQTT", "Client step completed.")
 
         }
