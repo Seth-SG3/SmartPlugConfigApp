@@ -9,7 +9,11 @@ import kotlinx.coroutines.withContext
 import mqtt.MQTTVersion
 import mqtt.Subscription
 import mqtt.broker.Broker
+import mqtt.broker.interfaces.PacketInterceptor
+import mqtt.packets.MQTTPacket
 import mqtt.packets.Qos
+import mqtt.packets.mqtt.MQTTConnect
+import mqtt.packets.mqtt.MQTTPublish
 import mqtt.packets.mqttv5.SubscriptionOptions
 
 @OptIn(ExperimentalUnsignedTypes::class)
@@ -65,7 +69,15 @@ fun setupMqttBroker(){
         withContext(Dispatchers.IO) {
             try {
                 Log.d("MQTT", "Running broker step...")
-                Broker().listen()
+                val broker = Broker(packetInterceptor = object : PacketInterceptor {
+                    override fun packetReceived(clientId: String, username: String?, password: UByteArray?, packet: MQTTPacket) {
+                        when (packet) {
+                            is MQTTConnect -> Log.d("MQTT", "mqtt connect ${packet.protocolName}") //println(packet.protocolName)
+                            is MQTTPublish -> Log.d("MQTT", "packet recieved ${packet.topicName}") //println(packet.topicName)
+                        }
+                    }
+                })
+                broker.listen()
                 Log.d("MQTT", "broker setup :)")
             }
             catch (e: Exception) {
