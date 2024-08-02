@@ -266,11 +266,20 @@ fun ButtonsWithTextOutput(
         Spacer(modifier = Modifier.height(20.dp))
         Button(
             onClick = {
+                setupMqttBroker()
+            },
+            colors = ButtonDefaults.buttonColors(containerColor = ipsosBlue)
+        ) {
+            Text("setup mqtt broker", color = Color.White)
+        }
+        Spacer(modifier = Modifier.height(20.dp))
+        Button(
+            onClick = {
                 setupMQTTClient()
             },
             colors = ButtonDefaults.buttonColors(containerColor = ipsosBlue)
         ) {
-            Text("setup mqtt client", color = Color.White)
+            Text("Send MQTT client", color = Color.White)
         }
         Spacer(modifier = Modifier.height(20.dp))
         Button(

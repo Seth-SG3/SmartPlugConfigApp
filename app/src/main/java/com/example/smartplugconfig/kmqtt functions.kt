@@ -1,15 +1,16 @@
 package com.example.smartplugconfig
 
 import MQTTClient
-import mqtt.MQTTVersion
-import mqtt.Subscription
-import mqtt.packets.Qos
-import mqtt.packets.mqttv5.SubscriptionOptions
+import android.util.Log
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import android.util.Log
+import mqtt.MQTTVersion
+import mqtt.Subscription
+import mqtt.broker.Broker
+import mqtt.packets.Qos
+import mqtt.packets.mqttv5.SubscriptionOptions
 
 @OptIn(ExperimentalUnsignedTypes::class)
 fun setupMQTTClient() {
@@ -17,7 +18,7 @@ fun setupMQTTClient() {
         withContext(Dispatchers.IO) {
             val client = MQTTClient(
                 MQTTVersion.MQTT3_1_1,
-                "192.168.222.252",
+                "192.168.222.246",
                 1883,
                 null
             ) {
@@ -46,6 +47,17 @@ fun setupMQTTClient() {
             Log.d("MQTT", "Running client step...")
             client.run() // Blocking method, use step() if you don't want to block the thread.
             Log.d("MQTT", "Client step completed.")
+
+        }
+    }
+}
+
+fun setupMqttBroker(){
+    CoroutineScope(Dispatchers.Main).launch {
+        withContext(Dispatchers.IO) {
+            Log.d("MQTT", "Running broker step...")
+            Broker().listen()
+            Log.d("MQTT", "broker setup :)")
 
         }
     }

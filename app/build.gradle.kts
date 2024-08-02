@@ -69,6 +69,8 @@ dependencies {
 //    Libraries for MQTT client and broker
     implementation("io.github.davidepianca98:kmqtt-common:0.4.8")
     implementation("io.github.davidepianca98:kmqtt-client:0.4.8")
+    implementation("io.github.davidepianca98:kmqtt-common-jvm:0.4.8")
+    implementation("io.github.davidepianca98:kmqtt-broker-jvm:0.4.8")
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
