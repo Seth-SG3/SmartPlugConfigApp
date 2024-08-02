@@ -47,6 +47,7 @@ import mqtt.Subscription
 import mqtt.packets.Qos
 import mqtt.packets.mqttv5.SubscriptionOptions
 import java.util.Calendar
+import androidx.lifecycle.lifecycleScope
 
 
 class MainActivity : ComponentActivity() {
@@ -67,6 +68,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
+
         val intent = Intent(this, PowerReadingService::class.java)
         startService(intent)
 
@@ -82,19 +84,6 @@ class MainActivity : ComponentActivity() {
             }
         }
 
-    private fun setupMQTTClient(){
-        val client = MQTTClient(
-            MQTTVersion.MQTT5,
-            "test.mosquitto.org",
-            1883,
-            null
-        ) {
-            println(it.payload?.toByteArray()?.decodeToString())
-        }
-        client.subscribe(listOf(Subscription("/randomTopic", SubscriptionOptions(Qos.EXACTLY_ONCE))))
-        client.publish(false, Qos.EXACTLY_ONCE, "/randomTopic", "hello".encodeToByteArray().toUByteArray())
-        client.run() // Blocking method, use step() if you don't want to block the thread
-    }
 
     private fun scheduleAlarm() {
         val alarmManager = getSystemService(Context.ALARM_SERVICE) as AlarmManager
@@ -268,10 +257,20 @@ fun ButtonsWithTextOutput(
                 viewModel.sendMQTTConfig { result ->
                     setCurrentTextOutput(result)
                 }
+
             },
             colors = ButtonDefaults.buttonColors(containerColor = ipsosBlue)
         ) {
             Text("Send MQTT config", color = Color.White)
+        }
+        Spacer(modifier = Modifier.height(20.dp))
+        Button(
+            onClick = {
+                setupMQTTClient()
+            },
+            colors = ButtonDefaults.buttonColors(containerColor = ipsosBlue)
+        ) {
+            Text("setup mqtt client", color = Color.White)
         }
         Spacer(modifier = Modifier.height(20.dp))
         Button(

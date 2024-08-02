@@ -192,8 +192,8 @@ class MainViewModel : ViewModel() {
     private suspend fun sendMQTTConfigInternal(): String {
         val ip = _ipAddress.value
         val host =
-            "192.168.245.252"  //test values for mqtt broker app on my phone, still not working
-        val topic = "smartPlugTest"
+            "192.168.222.252"  //test values for mqtt broker app on my phone
+        val topic = "random/Topic"
 
         val urlString =
             "http://${ip}/cm?cmnd=Backlog%20MqttHost%20$host%3B%20MqttUser%20Test1%3B%20MqttPassword%20Test2%3B%20Topic%20$topic"
