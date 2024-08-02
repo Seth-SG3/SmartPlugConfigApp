@@ -72,7 +72,7 @@ fun setupMqttBroker(){
                 val broker = Broker(packetInterceptor = object : PacketInterceptor {
                     override fun packetReceived(clientId: String, username: String?, password: UByteArray?, packet: MQTTPacket) {
                         when (packet) {
-                            is MQTTConnect -> Log.d("MQTT", "mqtt connect ${packet.protocolName}") //println(packet.protocolName)
+                            is MQTTConnect -> Log.d("MQTT", "mqtt connect") //println(packet.protocolName)
                             is MQTTPublish -> Log.d("MQTT", "packet recieved ${packet.topicName}") //println(packet.topicName)
                         }
                     }
