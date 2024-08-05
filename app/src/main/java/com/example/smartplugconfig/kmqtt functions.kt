@@ -17,41 +17,31 @@ import mqtt.packets.mqtt.MQTTPublish
 import mqtt.packets.mqttv5.SubscriptionOptions
 
 @OptIn(ExperimentalUnsignedTypes::class)
-fun setupMQTTClient() {
+fun sendMQTTmessage(command : String, payload : String? = "") {
     CoroutineScope(Dispatchers.Main).launch {
         withContext(Dispatchers.IO) {
             try {
                 val client = MQTTClient(
-                    MQTTVersion.MQTT3_1_1,
+                    MQTTVersion.MQTT5,
                     "192.168.222.246",
                     1883,
                     null
                 ) {
                     println(it.payload?.toByteArray()?.decodeToString())
                 }
-                Log.d("MQTT", "Subscribing to topic...")
-                client.subscribe(
-                    listOf(
-                        Subscription(
-                            "cmnd/randomTopic",
-                            SubscriptionOptions(Qos.EXACTLY_ONCE)
-                        )
-                    )
-                )
-                Log.d("MQTT", "Subscribed to topic successfully.")
+
 
                 Log.d("MQTT", "Publishing message...")
                 client.publish(
                     false,
                     Qos.EXACTLY_ONCE,
-                    "cmnd/randomTopic/Power",
-                    "TOGGLE".encodeToByteArray().toUByteArray()
+                    "cmnd/smartPlug/$command",
+                    "$payload".encodeToByteArray().toUByteArray()
                 )
                 Log.d("MQTT", "Message published successfully.")
 
-                Log.d("MQTT", "Running client step...")
-                client.run() // Blocking method, use step() if you don't want to block the thread.
-                Log.d("MQTT", "Client step completed.")
+                Log.d("MQTT", "Running client...")
+                client.run()
             }
             catch (e: Exception) {
                 Log.e("MQTT", "Exception: ${e.message}", e)
@@ -64,16 +54,17 @@ fun setupMQTTClient() {
     }
 }
 
+@ExperimentalUnsignedTypes
 fun setupMqttBroker(){
     CoroutineScope(Dispatchers.Main).launch {
         withContext(Dispatchers.IO) {
             try {
-                Log.d("MQTT", "Running broker step...")
+                Log.d("MQTT", "Running broker setup...")
                 val broker = Broker(packetInterceptor = object : PacketInterceptor {
                     override fun packetReceived(clientId: String, username: String?, password: UByteArray?, packet: MQTTPacket) {
                         when (packet) {
                             is MQTTConnect -> Log.d("MQTT", "mqtt connect") //println(packet.protocolName)
-                            is MQTTPublish -> Log.d("MQTT", "packet recieved ${packet.topicName}") //println(packet.topicName)
+                            is MQTTPublish -> Log.d("MQTT", "packet received ${packet.topicName}") //println(packet.topicName)
                         }
                     }
                 })

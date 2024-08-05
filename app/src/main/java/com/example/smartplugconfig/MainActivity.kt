@@ -275,7 +275,10 @@ fun ButtonsWithTextOutput(
         Spacer(modifier = Modifier.height(20.dp))
         Button(
             onClick = {
-                setupMQTTClient()
+                sendMQTTmessage(
+                    "Power",
+                    "TOGGLE"
+                )
             },
             colors = ButtonDefaults.buttonColors(containerColor = ipsosBlue)
         ) {
