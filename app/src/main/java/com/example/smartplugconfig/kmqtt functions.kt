@@ -31,14 +31,14 @@ fun sendMQTTmessage(command : String, payload : String? = "") {
                 }
 
 
-                Log.d("MQTT", "Publishing message...")
+               // Log.d("MQTT", "Publishing message...")
                 client.publish(
                     false,
                     Qos.EXACTLY_ONCE,
                     "cmnd/smartPlug/$command",
                     "$payload".encodeToByteArray().toUByteArray()
                 )
-                Log.d("MQTT", "Message published successfully.")
+                //Log.d("MQTT", "Message published successfully.")
 
                 Log.d("MQTT", "Running client...")
                 client.run()
@@ -54,6 +54,8 @@ fun sendMQTTmessage(command : String, payload : String? = "") {
     }
 }
 
+private var powerReadingCallback: PowerReadingCallback? = null
+
 @ExperimentalUnsignedTypes
 fun setupMqttBroker(){
     CoroutineScope(Dispatchers.Main).launch {
@@ -64,7 +66,15 @@ fun setupMqttBroker(){
                     override fun packetReceived(clientId: String, username: String?, password: UByteArray?, packet: MQTTPacket) {
                         when (packet) {
                             is MQTTConnect -> Log.d("MQTT", "mqtt connect") //println(packet.protocolName)
-                            is MQTTPublish -> Log.d("MQTT", "packet received ${packet.topicName}") //println(packet.topicName)
+                            is MQTTPublish -> { //Log.d("MQTT", "packet received ${packet.topicName}") //println(packet.topicName)
+                                if (packet.topicName == "stat/smartPlug/STATUS8") {
+                                    Log.d("MQTT", "got a power reading")
+                                    val powerReading = packet.payload.toString()
+                                    powerReadingCallback?.onPowerReadingReceived(powerReading)
+                                }
+                                Log.d("MQTT", "packet received ${packet.topicName}")
+                                Log.d("MQTT", "packet received ${packet.payload}")
+                            }
                         }
                     }
                 })
@@ -78,4 +88,8 @@ fun setupMqttBroker(){
 
         }
     }
+}
+
+fun setPowerReadingCallback(callback: PowerReadingCallback) {
+    powerReadingCallback = callback
 }

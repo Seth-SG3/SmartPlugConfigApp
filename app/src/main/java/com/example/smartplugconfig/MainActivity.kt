@@ -287,7 +287,11 @@ fun ButtonsWithTextOutput(
         Spacer(modifier = Modifier.height(20.dp))
         Button(
             onClick = {
-                viewModel.getPowerReading(context) { result ->
+                viewModel.getPowerReading(context,object : PowerReadingCallback {
+                    override fun onPowerReadingReceived(power: String) {
+                        setCurrentTextOutput(power)
+                    }
+                }) { result ->
                     setCurrentTextOutput(result)
                 }
             },

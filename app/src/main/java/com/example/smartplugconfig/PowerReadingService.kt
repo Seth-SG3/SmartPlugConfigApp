@@ -115,7 +115,12 @@ class PowerReadingService : Service() {
         val result = withContext(Dispatchers.IO) {
             var powerReadingResult: String? = null
             val latch = java.util.concurrent.CountDownLatch(1)
-            viewModel.getPowerReading(context) { reading ->
+            viewModel.getPowerReading(context,object : PowerReadingCallback {
+                override fun onPowerReadingReceived(power: String) {
+                    powerReadingResult = power
+                    latch.countDown()
+                }
+            }) { reading ->
                 powerReadingResult = reading
                 latch.countDown()
             }
@@ -126,6 +131,7 @@ class PowerReadingService : Service() {
     }
 
     private fun saveToCsv(context: Context, data: String) {
+        Log.d("MQTT", "writing to csv $data")
         val file = File(context.getExternalFilesDir(null), "power_readings.csv")
         val timestamp = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date())
         try {

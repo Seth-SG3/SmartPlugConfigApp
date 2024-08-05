@@ -25,6 +25,7 @@ import java.net.Inet4Address
 import java.net.NetworkInterface
 import java.net.URL
 import java.util.concurrent.Executor
+import com.example.smartplugconfig.PowerReadingCallback
 
 class MainViewModel : ViewModel() {
     private val _ipAddress = mutableStateOf<String?>(null)
@@ -223,9 +224,16 @@ class MainViewModel : ViewModel() {
         }
     }
 
+    private var powerReadingCallback: PowerReadingCallback? = null
+
+    fun setPowerReadingCallback(callback: PowerReadingCallback) {
+        powerReadingCallback = callback
+    }
+
     @RequiresApi(Build.VERSION_CODES.TIRAMISU)
-    fun getPowerReading(context: Context, onResult: (String) -> Unit) {
+    fun getPowerReading(context: Context,callback: PowerReadingCallback, onResult: (String) -> Unit) {
         viewModelScope.launch {
+            setPowerReadingCallback(callback)
             val result = getPowerReadingInternal(context)
             onResult(result)
         }
@@ -233,44 +241,26 @@ class MainViewModel : ViewModel() {
 
     @RequiresApi(Build.VERSION_CODES.TIRAMISU)
     private suspend fun getPowerReadingInternal(context: Context): String {
-        val ip = _ipAddress.value
-        val urlString = "http://${ip}/cm?cmnd=Status%208"
         var attempts = 0
 
         while (attempts < 3) {
             if (isLocalOnlyHotspotEnabled(context)) {
-                return try {
-                    Log.d("getPowerReading", "Attempting to send request to $urlString")
-                    val url = URL(urlString)
-                    withContext(Dispatchers.IO) {
-                        with(url.openConnection() as HttpURLConnection) {
-                            requestMethod = "GET"
-                            Log.d("getPowerReading", "Request method set to $requestMethod")
+                return withContext(Dispatchers.IO) {
+                    val latch = java.util.concurrent.CountDownLatch(1)
+                    var powerReadingResult: String? = null
 
-                            val responseCode = responseCode
-                            Log.d("getPowerReading", "Response code: $responseCode")
-                            if (responseCode == HttpURLConnection.HTTP_OK) {
-                                val response =
-                                    inputStream.bufferedReader().use(BufferedReader::readText)
-                                Log.d("getPowerReading", "Response: $response")
-
-                                // Parse the JSON response
-                                val jsonObject = JSONObject(response)
-                                val statusSNS = jsonObject.getJSONObject("StatusSNS")
-                                val energy = statusSNS.getJSONObject("ENERGY")
-                                val power = energy.getInt("Power")
-
-                                // Return the formatted string
-                                return@withContext "Power: $power Watts"
-                            } else {
-                                return@withContext "HTTP error code: $responseCode"
-                            }
+                    setPowerReadingCallback(object : PowerReadingCallback {
+                        override fun onPowerReadingReceived(power: String) {
+                            powerReadingResult = power
+                            latch.countDown()
                         }
-                    }
-                } catch (e: Exception) {
-                    val errorMessage = "Error: ${e.localizedMessage ?: "An unknown error occurred"}"
-                    Log.e("getPowerReading", errorMessage, e)
-                    return errorMessage
+                    })
+
+                    Log.d("getPowerReading", "Sending MQTT command to get power reading")
+                    sendMQTTmessage("Status","8")
+
+                    latch.await()
+                    powerReadingResult ?: "Error: No power reading obtained"
                 }
             } else {
                 turnOnHotspot(context)
@@ -278,7 +268,7 @@ class MainViewModel : ViewModel() {
                 attempts++
             }
         }
-        return "Unable to send request after 3 attempts"
+        return "Unable to retrieve power reading after 3 attempts"
     }
 
     //is only actually checking if device has ip but wifi should never be on so i think is ok for now at least for soak testing
