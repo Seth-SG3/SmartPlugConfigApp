@@ -115,14 +115,14 @@ class PowerReadingService : Service() {
         val result = withContext(Dispatchers.IO) {
             var powerReadingResult: String? = null
             val latch = java.util.concurrent.CountDownLatch(1)
-            viewModel.getPowerReading(context,object : PowerReadingCallback {
+
+            viewModel.getPowerReading(context, object : PowerReadingCallback {
                 override fun onPowerReadingReceived(power: String) {
                     powerReadingResult = power
                     latch.countDown()
                 }
-            }) { reading ->
+            }){ reading ->
                 powerReadingResult = reading
-                latch.countDown()
             }
             latch.await()
             powerReadingResult ?: "Error: No power reading obtained"
