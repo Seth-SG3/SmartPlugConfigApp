@@ -234,7 +234,9 @@ class MainViewModel : ViewModel() {
     fun getPowerReading(context: Context,callback: PowerReadingCallback, onResult: (String) -> Unit) {
         viewModelScope.launch {
             setPowerReadingCallback(callback)
+            setBrokerPowerReadingCallback(callback)
             val result = getPowerReadingInternal(context)
+            Log.d("MQTT", "test result: $result")
             onResult(result)
         }
     }

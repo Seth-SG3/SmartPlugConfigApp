@@ -80,7 +80,7 @@ fun setupMqttBroker(){
                                     powerReadingCallback?.onPowerReadingReceived(powerReading)
                                 }
                                 Log.d("MQTT", "packet received ${packet.topicName}")
-                                Log.d("MQTT", "packet received ${packet.payload}")
+                                Log.d("MQTT", "packet received ${packet.payload?.toByteArray()?.decodeToString()}")
                             }
                         }
                     }
@@ -97,6 +97,6 @@ fun setupMqttBroker(){
     }
 }
 
-fun setPowerReadingCallback(callback: PowerReadingCallback) {
+fun setBrokerPowerReadingCallback(callback: PowerReadingCallback) {
     powerReadingCallback = callback
 }
