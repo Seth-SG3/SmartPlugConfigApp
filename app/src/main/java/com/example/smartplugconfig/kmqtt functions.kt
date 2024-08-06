@@ -15,6 +15,7 @@ import mqtt.packets.Qos
 import mqtt.packets.mqtt.MQTTConnect
 import mqtt.packets.mqtt.MQTTPublish
 import mqtt.packets.mqttv5.SubscriptionOptions
+import org.json.JSONObject
 
 @OptIn(ExperimentalUnsignedTypes::class)
 fun sendMQTTmessage(command : String, payload : String? = "") {
@@ -68,8 +69,14 @@ fun setupMqttBroker(){
                             is MQTTConnect -> Log.d("MQTT", "mqtt connect") //println(packet.protocolName)
                             is MQTTPublish -> { //Log.d("MQTT", "packet received ${packet.topicName}") //println(packet.topicName)
                                 if (packet.topicName == "stat/smartPlug/STATUS8") {
-                                    Log.d("MQTT", "got a power reading")
-                                    val powerReading = packet.payload.toString()
+                                    //val powerReading = String(packet.payload,Charsets.UTF_8)
+                                    val powerReadingRaw = packet.payload?.toByteArray()?.decodeToString()
+                                    val jsonObject = JSONObject(powerReadingRaw)
+                                    val power = jsonObject.getJSONObject("StatusSNS")
+                                        .getJSONObject("ENERGY")
+                                        .getInt("Power")
+                                    val powerReading = "Power: $power Watts"
+                                    Log.d("MQTT", "got a power reading $powerReading")
                                     powerReadingCallback?.onPowerReadingReceived(powerReading)
                                 }
                                 Log.d("MQTT", "packet received ${packet.topicName}")
