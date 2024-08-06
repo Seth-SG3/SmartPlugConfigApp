@@ -78,6 +78,7 @@ fun setupMqttBroker(){
                                     val powerReading = "Power: $power Watts"
                                     Log.d("MQTT", "got a power reading $powerReading")
                                     powerReadingCallback?.onPowerReadingReceived(powerReading)
+                                    Log.d("MQTT", "done")
                                 }
                                 Log.d("MQTT", "packet received ${packet.topicName}")
                                 Log.d("MQTT", "packet received ${packet.payload?.toByteArray()?.decodeToString()}")
