@@ -266,7 +266,7 @@ fun ButtonsWithTextOutput(
         Spacer(modifier = Modifier.height(20.dp))
         Button(
             onClick = {
-                setupMqttBroker()
+                setupMqttBroker(context)
             },
             colors = ButtonDefaults.buttonColors(containerColor = ipsosBlue)
         ) {
