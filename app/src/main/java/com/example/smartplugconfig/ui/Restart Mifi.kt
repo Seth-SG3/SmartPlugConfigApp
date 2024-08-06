@@ -1,8 +1,3 @@
-import android.content.Context
-import android.net.ConnectivityManager
-import android.net.wifi.WifiInfo
-import android.net.wifi.WifiManager
-import android.os.Build
 import android.util.Log
 import com.google.gson.Gson
 import okhttp3.Call
@@ -180,48 +175,38 @@ fun whitelist(){
     Log.d("MAC", plugMacAddress)
     Log.d("MAC", phoneMacAddress)
     val MACAddresses =  listOf(plugMacAddress, phoneMacAddress)
-    val client = OkHttpClient()
-    val ajaxUrl = "http://192.168.100.1/ajax"
-
+    var int = 1
     for (address in MACAddresses) {
 
         val jsonPayload = Gson().toJson(
             mapOf(
                 "funcNo" to 1054,
-                "id" to 1,
+                "id" to int,
                 "mac" to address
             )
         )
-        val mediaType = "application/json; charset=utf-8".toMediaType()
-        val requestBody = RequestBody.create(mediaType, jsonPayload)
+        int += 1
+        sendMiFiRequest(jsonPayload = jsonPayload)
 
-        // Create the restart request
-        val restartRequestBuilder = Request.Builder()
-            .url(ajaxUrl)
-            .post(requestBody)
-            .header("Content-Type", "application/json")
-
-        // Add cookies to the header if needed
-        // cookies.forEach { restartRequestBuilder.addHeader("Cookie", it) }
-        Log.d("Restart", "Attempting to restart mifi device")
-        val restartRequest = restartRequestBuilder.build()
-
-        client.newCall(restartRequest).enqueue(object : Callback {
-            override fun onFailure(call: Call, e: IOException) {
-                e.printStackTrace()
-            }
-
-            override fun onResponse(call: Call, response: Response) {
-                response.use {
-                    if (!response.isSuccessful) {
-                        println("Restart request failed with code: ${response.code}, message: ${response.message}")
-                        throw IOException("Unexpected code $response")
-                    }
-                    println("MiFi dongle restarted successfully!")
-                }
-            }
-        })
     }
+
+    // Dongle uses a request of 1053 type 1 to say whitelist and then another of 1055 afterwards
+    val jsonPayload1053 = Gson().toJson(
+        mapOf(
+            "funcNo" to 1053,
+            "type" to "1",
+        )
+    )
+    sendMiFiRequest(jsonPayload = jsonPayload1053)
+
+    val jsonPayload1055 = Gson().toJson(
+        mapOf(
+            "funcNo" to 1055,
+        )
+    )
+    sendMiFiRequest(jsonPayload = jsonPayload1055)
+
+
 }
 
 /*
@@ -232,3 +217,37 @@ Send other whitelist request
 Format of request is
     {"funcNo":1054,"id":1,"mac":"34:98:7a:d5:f4:df"}:
 */
+
+fun sendMiFiRequest(jsonPayload: String, url: String = "http://192.168.100.1/ajax"){
+
+    val mediaType = "application/json; charset=utf-8".toMediaType()
+    val requestBody = RequestBody.create(mediaType, jsonPayload)
+    val client = OkHttpClient()
+
+
+    // Create the request
+    val sendMacRequestBuilder = Request.Builder()
+        .url(url)
+        .post(requestBody)
+        .header("Content-Type", "application/json")
+
+    Log.d("MAC Address", "Attempting to send request to MiFi")
+    val sendMacRequest = sendMacRequestBuilder.build()
+
+    client.newCall(sendMacRequest).enqueue(object : Callback {
+        override fun onFailure(call: Call, e: IOException) {
+            e.printStackTrace()
+        }
+
+        override fun onResponse(call: Call, response: Response) {
+            response.use {
+                if (!response.isSuccessful) {
+                    println("Mifi request failed with: ${response.code}, message: ${response.message}")
+                    throw IOException("Unexpected code $response")
+                }
+                println("Request sent successfully!")
+            }
+        }
+    })
+
+}
