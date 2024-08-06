@@ -27,7 +27,11 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -42,12 +46,17 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.smartplugconfig.ui.theme.SmartPlugConfigTheme
+import getPhoneMacAddress
+import getPlugMacAddress
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
+import restartMiFiDongle
+import whitelist
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
@@ -153,6 +162,7 @@ class MainActivity : ComponentActivity() {
                     connectivityManager.bindProcessToNetwork(network)
                     Log.d("WifiConnection", "Connected to $ssid")
                     connectionSuccessful(ssid = ssid, status = status, state = state)
+                    getPlugMacAddress()
                 }
 
                 override fun onUnavailable() {
@@ -188,6 +198,7 @@ class MainActivity : ComponentActivity() {
                     connectivityManager.bindProcessToNetwork(network)
                     Log.d("WifiConnection", "Connected to $ssid")
                     connectionSuccessful(ssid = ssid, status = status, state = state)
+
                 }
 
                 override fun onUnavailable() {
@@ -233,7 +244,7 @@ class MainActivity : ComponentActivity() {
         var power by remember { mutableStateOf("Place") }
         var currentTime by remember { mutableStateOf(getCurrentTime()) }
         val coroutineScope = rememberCoroutineScope()
-
+        getPhoneMacAddress()
         Box(
             contentAlignment = Alignment.Center,
             modifier = Modifier.fillMaxSize()
@@ -247,15 +258,29 @@ class MainActivity : ComponentActivity() {
             ){
             Text(text = power)
             Text(text = currentTime)
+                Spacer(modifier = Modifier.height(20.dp))
+                Button(onClick = {
+                    restartMiFiDongle()
+
+                }, colors = ButtonDefaults.buttonColors(containerColor = Color.Blue) // Set button color
+                ) {
+                    Text("Send Wifi config", color = Color.White)
+                }
         }
         }
 
         LaunchedEffect(Unit) {
+            var counter = 0
+
             while (true) {
                 coroutineScope.launch {
                     power = writeData(viewModel, context = this@MainActivity, ssid = ssid, password = password)
                 }
-                delay(60000) // 15 seconds delay
+                counter += 1
+                delay(15000) // 15 seconds delay
+                if (counter % (2*60*60/15) == 0){
+                    restartMiFiDongle()
+                }
             }
         }
     }
@@ -273,6 +298,7 @@ class MainActivity : ComponentActivity() {
                     writeToFile(context, record)
                 }else{
                     connectToWifi(ssid = ssid, password = password, state = 3, status = {Int -> Unit})
+                    writeToFile(context, "${getCurrentTime()} : Connection Failure\n")
                 }
             }
         }

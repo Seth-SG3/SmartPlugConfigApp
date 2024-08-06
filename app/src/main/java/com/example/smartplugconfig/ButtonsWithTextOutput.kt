@@ -159,7 +159,7 @@ fun ButtonsWithTextOutput(
             )
         }
         3 -> {
-            status = 2
+            status = 4
         }
         4 -> {
             // Choose MiFi Network
@@ -170,7 +170,6 @@ fun ButtonsWithTextOutput(
         }
         5 -> {
             // Send plug the mifi details
-
 
             Text(
                 text = "Connecting plug to MiFi Device",
@@ -210,11 +209,15 @@ fun ButtonsWithTextOutput(
             viewModel.scanDevices(context) { result ->
                 isScanning = false
                 if (result != null) {
+                    if (result != "No devices found"){
                     setCurrentTextOutput(result)
+                        result?.let { ip -> viewModel.setIpAddress(ip) } // Set the IP address in the ViewModel.
+                        status = 10
+                    }else{
+                        status = 8
+                    }
                 }
-                result?.let { ip -> viewModel.setIpAddress(ip) } // Set the IP address in the ViewModel.
             }
-            status = 10
         }
         10 -> {
             activity.DataCycle(viewModel, ssid = mifiSsid, password = "1234567890")

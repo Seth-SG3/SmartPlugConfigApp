@@ -39,7 +39,7 @@ class DeviceScanner(private val context: Context) {
 
                     try {
                         val socket = Socket()
-                        socket.connect(InetSocketAddress(hostAddress, 80), 40) // Increased timeout to 20ms too little think 40ms is best
+                        socket.connect(InetSocketAddress(hostAddress, 80), 80) // Increased timeout to 20ms too little think 40ms is best
                         deviceList.add(hostAddress)
                         socket.close()
                     } catch (e: IOException) {

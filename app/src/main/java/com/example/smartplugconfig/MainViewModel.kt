@@ -196,6 +196,8 @@ class MainViewModel : ViewModel() {
     }
 
     private suspend fun getPowerReadingInternal(): String {
+
+
         val ip = _ipAddress.value
         val urlString = "http://${ip}/cm?cmnd=Status%208"
         return try {
