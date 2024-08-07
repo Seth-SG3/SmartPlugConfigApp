@@ -18,12 +18,18 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.size
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.SignalWifi4Bar
+import androidx.compose.material.icons.filled.SignalWifiOff
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -70,7 +76,7 @@ class MainActivity : ComponentActivity() {
 
 
         val intent = Intent(this, PowerReadingService::class.java)
-        startService(intent)
+        startForegroundService(intent)
 
         scheduleAlarm()
 
@@ -150,8 +156,6 @@ class MainActivity : ComponentActivity() {
 
 
 
-
-
 @RequiresApi(Build.VERSION_CODES.TIRAMISU)
 @Composable
 fun SmartPlugConfigApp(viewModel: MainViewModel = viewModel(), activity: MainActivity) {
@@ -168,6 +172,7 @@ fun SmartPlugConfigApp(viewModel: MainViewModel = viewModel(), activity: MainAct
 }
 
 
+@OptIn(ExperimentalUnsignedTypes::class)
 @RequiresApi(Build.VERSION_CODES.TIRAMISU)
 @Composable
 fun ButtonsWithTextOutput(
@@ -182,6 +187,14 @@ fun ButtonsWithTextOutput(
     val ipsosGreen = Color(0xFF00B140) // Ipsos Green color
     var isScanning by remember { mutableStateOf(false) }
     var loadingText by remember { mutableStateOf("Scanning") }
+    var isHotspotEnabled by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        while (true) {
+            isHotspotEnabled = viewModel.isLocalOnlyHotspotEnabled()
+            delay(6000) // Check every minute
+        }
+    }
 
     // LaunchedEffect to animate the loading text
     LaunchedEffect(isScanning) {
@@ -204,7 +217,19 @@ fun ButtonsWithTextOutput(
             .background(ipsosGreen), // Set green background
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Spacer(modifier = Modifier.height(250.dp))
+        Spacer(modifier = Modifier.height(100.dp))
+        Icon(
+            imageVector = if (isHotspotEnabled) Icons.Default.SignalWifi4Bar else Icons.Default.SignalWifiOff,
+            contentDescription = null,
+            tint = if (isHotspotEnabled) Color.Green else Color.Red,
+            modifier = Modifier.size(48.dp)
+        )
+        Text(
+            text = if (isHotspotEnabled) "Hotspot is ON" else "Hotspot is OFF",
+            fontSize = 20.sp,
+            color = if (isHotspotEnabled) Color.Green else Color.Red
+        )
+        Spacer(modifier = Modifier.height(50.dp))
         Button(
             onClick = {
                 val result = viewModel.connectToPlugWifi(context)
@@ -241,10 +266,8 @@ fun ButtonsWithTextOutput(
                 isScanning = true
                 viewModel.scanDevices(context) { result ->
                     isScanning = false
-                    if (result != null) {
-                        setCurrentTextOutput(result)
-                    }
-                    result?.let { ip -> viewModel.setIpAddress(ip) } // Set the IP address in the ViewModel.
+                    setCurrentTextOutput(result)
+                    result.let { ip -> viewModel.setIpAddress(ip) } // Set the IP address in the ViewModel.
                 }
             },
             colors = ButtonDefaults.buttonColors(containerColor = ipsosBlue)
@@ -266,7 +289,7 @@ fun ButtonsWithTextOutput(
         Spacer(modifier = Modifier.height(20.dp))
         Button(
             onClick = {
-                setupMqttBroker()
+                setupMqttBroker(context)
             },
             colors = ButtonDefaults.buttonColors(containerColor = ipsosBlue)
         ) {

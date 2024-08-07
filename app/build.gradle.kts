@@ -71,6 +71,7 @@ dependencies {
     implementation("io.github.davidepianca98:kmqtt-client:0.4.8")
     implementation("io.github.davidepianca98:kmqtt-common-jvm:0.4.8")
     implementation("io.github.davidepianca98:kmqtt-broker-jvm:0.4.8")
+    implementation ("androidx.compose.material:material-icons-extended:1.0.5")
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

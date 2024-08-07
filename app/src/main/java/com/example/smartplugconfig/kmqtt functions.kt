@@ -3,6 +3,7 @@ package com.example.smartplugconfig
 import MQTTClient
 import android.content.Context
 import android.util.Log
+import com.example.smartplugconfig.CsvUtils.saveToCsv
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -60,7 +61,7 @@ fun sendMQTTmessage(command : String, payload : String? = "") {
 private var powerReadingCallback: PowerReadingCallback? = null
 
 @ExperimentalUnsignedTypes
-fun setupMqttBroker(){
+fun setupMqttBroker(context: Context){
     CoroutineScope(Dispatchers.Main).launch {
         withContext(Dispatchers.IO) {
             try {
@@ -81,6 +82,15 @@ fun setupMqttBroker(){
                                     Log.d("MQTT", "got a power reading $powerReading")
                                     powerReadingCallback?.onPowerReadingReceived(powerReading)
                                     Log.d("MQTT", "done")
+                                }
+                                if (packet.topicName == "tele/smartPlug/SENSOR") {
+                                    //val powerReading = String(packet.payload,Charsets.UTF_8)
+                                    val powerReadingRaw = packet.payload?.toByteArray()?.decodeToString()
+                                    val jsonObject = JSONObject(powerReadingRaw)
+                                    val power = jsonObject.getJSONObject("ENERGY").getInt("Power")
+                                    val powerReading = "Power: $power Watts"
+                                    Log.d("MQTT", "saving power to csv $powerReading")
+                                    saveToCsv(context,powerReading)
                                 }
                                 Log.d("MQTT", "packet received ${packet.topicName}")
                                 Log.d("MQTT", "packet received ${packet.payload?.toByteArray()?.decodeToString()}")

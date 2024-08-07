@@ -12,18 +12,11 @@ import android.os.IBinder
 import android.os.PowerManager
 import android.util.Log
 import androidx.annotation.RequiresApi
-import androidx.core.app.NotificationCompat
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.io.File
-import java.io.FileWriter
-import java.io.IOException
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 
 class PowerReadingService : Service() {
 
@@ -31,27 +24,20 @@ class PowerReadingService : Service() {
     private val viewModel = MainViewModel.getInstance()
     private lateinit var wakeLock: PowerManager.WakeLock
 
-    private val runnable = object : Runnable {
-        @RequiresApi(Build.VERSION_CODES.TIRAMISU)
-        override fun run() {
-            CoroutineScope(Dispatchers.IO).launch {
-                //ensureIpAddressAndReadPower(applicationContext)
-            }
-            handler.postDelayed(this, 60000) // Run every 1 minute
-            Log.d("PowerReadingService", "Runnable executed")
-        }
-    }
 
+
+    @RequiresApi(Build.VERSION_CODES.TIRAMISU)
+    @OptIn(ExperimentalUnsignedTypes::class)
     override fun onCreate() {
         super.onCreate()
         startForegroundService()
-        handler.post(runnable)
+        setupMqttBroker(applicationContext)
+        checkAndEnableHotspot(applicationContext,viewModel)
         acquireWakeLock()
     }
 
     override fun onDestroy() {
         super.onDestroy()
-        handler.removeCallbacks(runnable)
         releaseWakeLock()
     }
 
@@ -61,19 +47,17 @@ class PowerReadingService : Service() {
 
     private fun startForegroundService() {
         val channelId = "PowerReadingServiceChannel"
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(
-                channelId,
-                "Power Reading Service",
-                NotificationManager.IMPORTANCE_DEFAULT
-            )
-            val manager = getSystemService(NotificationManager::class.java)
-            manager?.createNotificationChannel(channel)
-        }
+        val channel = NotificationChannel(
+            channelId,
+            "Power Reading Service",
+            NotificationManager.IMPORTANCE_DEFAULT
+        )
+        val manager = getSystemService(NotificationManager::class.java)
+        manager?.createNotificationChannel(channel)
 
-        val notification: Notification = NotificationCompat.Builder(this, channelId)
+        val notification: Notification = Notification.Builder(this, channelId)
             .setContentTitle("Power Reading Service")
-            .setContentText("Collecting power readings every minute")
+            .setContentText("Setting up MQTT broker")
             .setSmallIcon(R.drawable.dice_6) // Replace with your app's icon
             .build()
 
@@ -92,78 +76,21 @@ class PowerReadingService : Service() {
         }
     }
 
-
     @RequiresApi(Build.VERSION_CODES.TIRAMISU)
-    private suspend fun ensureIpAddressAndReadPower(context: Context) {
-        if (viewModel.ipAddress.value == null || viewModel.ipAddress.value == "No devices found") {
-            scanForDevicesAndWaitForIp(context) { result ->
-                if (result != "No devices found") {
-                    CoroutineScope(Dispatchers.IO).launch {
-                        readPowerAndSave(context)
+    private fun checkAndEnableHotspot(context: Context, viewModel: MainViewModel) {
+        CoroutineScope(Dispatchers.Main).launch {
+            withContext(Dispatchers.IO) {
+                while (true) {
+                    if (!viewModel.isLocalOnlyHotspotEnabled()) {
+                        Log.d("Hotspot", "Hotspot is off, turning it on...")
+                        viewModel.turnOnHotspot(context)
                     }
-                }
-            }
-        } else {
-            CoroutineScope(Dispatchers.IO).launch {
-                readPowerAndSave(context)
-            }
-        }
-    }
-
-    @RequiresApi(Build.VERSION_CODES.TIRAMISU)
-    private suspend fun readPowerAndSave(context: Context) {
-        val result = withContext(Dispatchers.IO) {
-            var powerReadingResult: String? = null
-            val latch = java.util.concurrent.CountDownLatch(1)
-
-            viewModel.getPowerReading(context, object : PowerReadingCallback {
-                override fun onPowerReadingReceived(power: String) {
-                    powerReadingResult = power
-                    latch.countDown()
-                }
-            }){ reading ->
-                powerReadingResult = reading
-            }
-            latch.await()
-            powerReadingResult ?: "Error: No power reading obtained"
-        }
-        saveToCsv(context, result)
-    }
-
-    private fun saveToCsv(context: Context, data: String) {
-        Log.d("MQTT", "writing to csv $data")
-        val file = File(context.getExternalFilesDir(null), "power_readings.csv")
-        val timestamp = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date())
-        try {
-            FileWriter(file, true).use { writer ->
-                writer.append("$timestamp, $data\n")
-            }
-            Log.d("PowerReadingService", "Data written to CSV: $timestamp, $data in ${file.absolutePath}")
-        } catch (e: IOException) {
-            e.printStackTrace()
-            Log.e("PowerReadingService", "Error writing to CSV", e)
-        }
-    }
-
-    @RequiresApi(Build.VERSION_CODES.TIRAMISU)
-    private fun scanForDevicesAndWaitForIp(context: Context, onScanCompleted: (String) -> Unit) {
-        CoroutineScope(Dispatchers.IO).launch {
-            val hotspotStatus = viewModel.turnOnHotspot(context)
-            Log.d("PowerReadingService", hotspotStatus)
-
-            viewModel.scanDevices(context) { result ->
-                if (result == "No devices found") {
-                    Log.d("PowerReadingService", "No devices found, will retry in 5 seconds")
-                    handler.postDelayed({
-                        scanForDevicesAndWaitForIp(context, onScanCompleted)
-                    }, 5000) // Retry every 60 seconds
-                } else {
-                    Log.d("PowerReadingService", "Device found: $result")
-                    onScanCompleted(result)
+                    delay(60000) // Check every minute
                 }
             }
         }
     }
+
 
 
 }
