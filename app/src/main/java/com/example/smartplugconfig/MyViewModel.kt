@@ -134,7 +134,7 @@ class MainViewModel : ViewModel() {
 
     @RequiresApi(33)
     fun turnOnHotspot(context: Context): String {
-        if (isLocalOnlyHotspotEnabled(context)) {
+        if (isLocalOnlyHotspotEnabled()) {
             return "Hotspot is already active."
         }
         startLocalOnlyHotspotWithConfig(
@@ -193,11 +193,11 @@ class MainViewModel : ViewModel() {
     private suspend fun sendMQTTConfigInternal(): String {
         val ip = _ipAddress.value
         val host =
-            "192.168.222.246"  //test values for mqtt broker app on my phone
+            "192.168.200.233"  //test values for mqtt broker app on my phone
         val topic = "smartPlug"
 
         val urlString =
-            "http://${ip}/cm?cmnd=Backlog%20MqttHost%20$host%3B%20MqttUser%20Test1%3B%20MqttPassword%20Test2%3B%20Topic%20$topic%3B%20SetOption140%201%3B%20MqttRetry%2010%3B%20MqttWifiTimeout%2020000"
+            "http://${ip}/cm?cmnd=Backlog%20MqttHost%20$host%3B%20MqttUser%20Test1%3B%20MqttPassword%20Test2%3B%20Topic%20$topic%3B%20SetOption140%201%3B%20MqttRetry%2010%3B%20MqttWifiTimeout%2020000%3B%20TelePeriod%2060"
         return try {
             Log.d("sendMQTTConfig", "Attempting to send request to $urlString")
             val url = URL(urlString)
@@ -246,7 +246,7 @@ class MainViewModel : ViewModel() {
         var attempts = 0
 
         while (attempts < 3) {
-            if (isLocalOnlyHotspotEnabled(context)) {
+            if (isLocalOnlyHotspotEnabled()) {
                 return withContext(Dispatchers.IO) {
                     val latch = java.util.concurrent.CountDownLatch(1)
                     var powerReadingResult: String? = null
@@ -274,9 +274,8 @@ class MainViewModel : ViewModel() {
     }
 
     //is only actually checking if device has ip but wifi should never be on so i think is ok for now at least for soak testing
-    private fun isLocalOnlyHotspotEnabled(context: Context): Boolean {
-        val wifiManager =
-            context.applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
+    fun isLocalOnlyHotspotEnabled(): Boolean {
+        //val wifiManager = context.applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
 
         try {
             val interfaces = NetworkInterface.getNetworkInterfaces()
