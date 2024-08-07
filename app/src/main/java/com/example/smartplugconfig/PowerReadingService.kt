@@ -35,7 +35,7 @@ class PowerReadingService : Service() {
         @RequiresApi(Build.VERSION_CODES.TIRAMISU)
         override fun run() {
             CoroutineScope(Dispatchers.IO).launch {
-                ensureIpAddressAndReadPower(applicationContext)
+                //ensureIpAddressAndReadPower(applicationContext)
             }
             handler.postDelayed(this, 60000) // Run every 1 minute
             Log.d("PowerReadingService", "Runnable executed")
@@ -137,7 +137,6 @@ class PowerReadingService : Service() {
         try {
             FileWriter(file, true).use { writer ->
                 writer.append("$timestamp, $data\n")
-                //writer.append(",")
             }
             Log.d("PowerReadingService", "Data written to CSV: $timestamp, $data in ${file.absolutePath}")
         } catch (e: IOException) {
@@ -165,4 +164,6 @@ class PowerReadingService : Service() {
             }
         }
     }
+
+
 }

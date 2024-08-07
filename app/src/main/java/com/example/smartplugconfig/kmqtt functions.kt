@@ -1,6 +1,7 @@
 package com.example.smartplugconfig
 
 import MQTTClient
+import android.content.Context
 import android.util.Log
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -17,6 +18,7 @@ import mqtt.packets.mqtt.MQTTPublish
 import mqtt.packets.mqttv5.SubscriptionOptions
 import org.json.JSONObject
 
+
 @OptIn(ExperimentalUnsignedTypes::class)
 fun sendMQTTmessage(command : String, payload : String? = "") {
     CoroutineScope(Dispatchers.Main).launch {
@@ -24,7 +26,7 @@ fun sendMQTTmessage(command : String, payload : String? = "") {
             try {
                 val client = MQTTClient(
                     MQTTVersion.MQTT5,
-                    "192.168.222.246",
+                    "192.168.200.233",
                     1883,
                     null
                 ) {
