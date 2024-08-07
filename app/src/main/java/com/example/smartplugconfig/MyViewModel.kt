@@ -9,7 +9,6 @@ import android.os.Build
 import android.provider.Settings
 import android.util.Log
 import androidx.annotation.RequiresApi
-import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -18,18 +17,17 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import org.json.JSONObject
 import java.io.BufferedReader
 import java.net.HttpURLConnection
 import java.net.Inet4Address
 import java.net.NetworkInterface
 import java.net.URL
 import java.util.concurrent.Executor
-import com.example.smartplugconfig.PowerReadingCallback
 
 class MainViewModel : ViewModel() {
     private val _ipAddress = mutableStateOf<String?>(null)
-    val ipAddress: State<String?> = _ipAddress
+    private val _ipAddressMQTT = mutableStateOf<String?>(null)
+
 
     companion object {
         @Volatile private var instance: MainViewModel? = null
@@ -44,6 +42,7 @@ class MainViewModel : ViewModel() {
     fun setIpAddress(ip: String) {
         _ipAddress.value = ip
     }
+
 
     fun scanDevices(context: Context, onScanCompleted: (String) -> Unit) {
         val deviceScanner = DeviceScanner(context)
@@ -60,6 +59,7 @@ class MainViewModel : ViewModel() {
         })
     }
 
+    @SuppressLint("QueryPermissionsNeeded")
     fun connectToPlugWifi(context: Context): String {
         // Create an Intent to open the Wi-Fi settings
         val intent = Intent(Settings.ACTION_WIFI_SETTINGS)
@@ -192,8 +192,7 @@ class MainViewModel : ViewModel() {
 
     private suspend fun sendMQTTConfigInternal(): String {
         val ip = _ipAddress.value
-        val host =
-            "192.168.200.233"  //test values for mqtt broker app on my phone
+        val host = _ipAddressMQTT.value
         val topic = "smartPlug"
 
         val urlString =
@@ -226,7 +225,7 @@ class MainViewModel : ViewModel() {
 
     private var powerReadingCallback: PowerReadingCallback? = null
 
-    fun setPowerReadingCallback(callback: PowerReadingCallback) {
+    private fun setPowerReadingCallback(callback: PowerReadingCallback) {
         powerReadingCallback = callback
     }
 
@@ -289,6 +288,9 @@ class MainViewModel : ViewModel() {
                             "isLocalOnlyHotspotEnabled",
                             "Device IP Address: ${address.hostAddress}"
                         )
+                        if (_ipAddressMQTT.value != null) {
+                            _ipAddressMQTT.value = address.hostAddress
+                        }
                         return true
                     }
                 }

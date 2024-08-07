@@ -2,7 +2,6 @@ package com.example.smartplugconfig
 
 //noinspection UsingMaterialAndMaterial3Libraries
 
-import MQTTClient
 import android.Manifest
 import android.app.AlarmManager
 import android.app.PendingIntent
@@ -18,7 +17,6 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -48,12 +46,7 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.smartplugconfig.ui.theme.SmartPlugConfigTheme
 import kotlinx.coroutines.delay
-import mqtt.MQTTVersion
-import mqtt.Subscription
-import mqtt.packets.Qos
-import mqtt.packets.mqttv5.SubscriptionOptions
 import java.util.Calendar
-import androidx.lifecycle.lifecycleScope
 
 
 class MainActivity : ComponentActivity() {
@@ -82,7 +75,7 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             SmartPlugConfigTheme {
-                SmartPlugConfigApp(activity = this)
+                SmartPlugConfigApp()
             }
                 if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
                     requestPermissions(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION), 1)
@@ -158,7 +151,7 @@ class MainActivity : ComponentActivity() {
 
 @RequiresApi(Build.VERSION_CODES.TIRAMISU)
 @Composable
-fun SmartPlugConfigApp(viewModel: MainViewModel = viewModel(), activity: MainActivity) {
+fun SmartPlugConfigApp(viewModel: MainViewModel = viewModel()) {
     var currentTextOutput by remember { mutableStateOf("output") }
     val context = LocalContext.current
 
@@ -167,7 +160,6 @@ fun SmartPlugConfigApp(viewModel: MainViewModel = viewModel(), activity: MainAct
         setCurrentTextOutput = { currentTextOutput = it },
         context = context,
         viewModel = viewModel,
-        activity = activity,
     )
 }
 
@@ -181,7 +173,6 @@ fun ButtonsWithTextOutput(
     context: Context,
     viewModel: MainViewModel,
     modifier: Modifier = Modifier,
-    activity: MainActivity,
 ) {
     val ipsosBlue = Color(0xFF0033A0) // Ipsos Blue color
     val ipsosGreen = Color(0xFF00B140) // Ipsos Green color

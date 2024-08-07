@@ -9,14 +9,12 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import mqtt.MQTTVersion
-import mqtt.Subscription
 import mqtt.broker.Broker
 import mqtt.broker.interfaces.PacketInterceptor
 import mqtt.packets.MQTTPacket
 import mqtt.packets.Qos
 import mqtt.packets.mqtt.MQTTConnect
 import mqtt.packets.mqtt.MQTTPublish
-import mqtt.packets.mqttv5.SubscriptionOptions
 import org.json.JSONObject
 
 

@@ -20,7 +20,6 @@ import kotlinx.coroutines.withContext
 
 class PowerReadingService : Service() {
 
-    private val handler = Handler()
     private val viewModel = MainViewModel.getInstance()
     private lateinit var wakeLock: PowerManager.WakeLock
 
