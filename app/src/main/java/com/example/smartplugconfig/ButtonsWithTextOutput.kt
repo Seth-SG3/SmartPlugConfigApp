@@ -17,7 +17,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.ui.Alignment
@@ -39,7 +38,6 @@ fun ButtonsWithTextOutput(
     plugWifiNetworks: SnapshotStateList<String>
 ) {
     var mifiSsid by remember { mutableStateOf("ssid")}
-    val coroutineScope = rememberCoroutineScope()
     var status by remember { mutableIntStateOf(1) }
     val ipsosBlue = Color(0xFF0033A0) // Ipsos Blue color
     val ipsosGreen = Color(0xFF00B140) // Ipsos Green color
@@ -159,13 +157,15 @@ fun ButtonsWithTextOutput(
             )
         }
         3 -> {
-            status = 4
+            status = 2
         }
         4 -> {
             // Choose MiFi Network
             viewModel.ChooseMifiNetwork(
                 activity = activity,
-                status = {status = it})
+                status = {status = it},
+                mifiNetwork =  {mifiSsid = it}
+            )
 
         }
         5 -> {
@@ -177,7 +177,7 @@ fun ButtonsWithTextOutput(
                 fontWeight = FontWeight.Bold, // Make text bold
                 color = Color.Black // Text color
             )
-            val mifiSsid = activity.mifiNetworks.single()
+            @Suppress("NAME_SHADOWING") val mifiSsid: String = activity.mifiNetworks.single()
             viewModel.connectPlugToMifi(
                 activity = activity,
                 status =  {status = it},
@@ -195,8 +195,6 @@ fun ButtonsWithTextOutput(
                 fontWeight = FontWeight.Bold, // Make text bold
                 color = Color.Black // Text color
             )
-            mifiSsid = activity.mifiNetworks.single()
-
             activity.connectToWifi(ssid = mifiSsid, password = "1234567890", status = {status = it}, state = status)
 
 
@@ -211,7 +209,7 @@ fun ButtonsWithTextOutput(
                 if (result != null) {
                     if (result != "No devices found"){
                     setCurrentTextOutput(result)
-                        result?.let { ip -> viewModel.setIpAddress(ip) } // Set the IP address in the ViewModel.
+                        result.let { ip -> viewModel.setIpAddress(ip) } // Set the IP address in the ViewModel.
                         status = 10
                     }else{
                         status = 8

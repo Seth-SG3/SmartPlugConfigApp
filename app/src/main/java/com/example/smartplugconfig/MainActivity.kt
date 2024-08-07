@@ -13,8 +13,6 @@ import android.net.Uri
 import android.net.wifi.WifiManager
 import android.net.wifi.WifiNetworkSpecifier
 import android.os.Bundle
-import android.os.Handler
-import android.os.Looper
 import android.os.PowerManager
 import android.provider.Settings
 import android.util.Log
@@ -56,7 +54,6 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import restartMiFiDongle
-import whitelist
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
@@ -76,8 +73,6 @@ class MainActivity : ComponentActivity() {
     lateinit var wifiManager: WifiManager
     var mifiNetworks = mutableStateListOf<String>()
     var plugWifiNetworks = mutableStateListOf<String>()
-    private val handler = Handler(Looper.getMainLooper())
-    private lateinit var runnable: Runnable
 
     override fun onCreate(savedInstanceState: Bundle?) {
         initialisation()
@@ -104,6 +99,7 @@ class MainActivity : ComponentActivity() {
         wifiManager = applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
     }
 
+    @SuppressLint("BatteryLife")
     private fun checkAndRequestPermissions() {
         val permissionsNeeded = requiredPermissions.filter {
             ContextCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED
@@ -233,7 +229,7 @@ class MainActivity : ComponentActivity() {
         super.onDestroy()
     }
 
-    fun getCurrentTime(): String {
+    private fun getCurrentTime(): String {
         val currentDateTime = LocalDateTime.now()
         val formatter = DateTimeFormatter.ofPattern("dd-MM-yyyy HH:mm:ss")
         return currentDateTime.format(formatter)
@@ -274,18 +270,19 @@ class MainActivity : ComponentActivity() {
 
             while (true) {
                 coroutineScope.launch {
-                    power = writeData(viewModel, context = this@MainActivity, ssid = ssid, password = password)
+                    currentTime = getCurrentTime()
+                    power = writeData(viewModel, context = this@MainActivity, ssid = ssid, password = password, currentTime = currentTime)
                 }
                 counter += 1
                 delay(15000) // 15 seconds delay
-                if (counter % (2*60*60/15) == 0){
+                if (counter % (10*60*60/15) == 0){
                     restartMiFiDongle()
                 }
             }
         }
     }
 
-    suspend fun writeData(viewModel: MainViewModel, context: MainActivity, ssid: String, password: String): String {
+    private suspend fun writeData(viewModel: MainViewModel, context: MainActivity, ssid: String, password: String, currentTime: String): String {
         return suspendCancellableCoroutine { cont ->
             viewModel.getPowerReading { powerReading ->
                 cont.resume(powerReading)
@@ -294,17 +291,17 @@ class MainActivity : ComponentActivity() {
 
 
                     // Write to file
-                    val record = "${getCurrentTime()} - Power: $powerReading\n"
+                    val record = "$currentTime - Power: $powerReading\n"
                     writeToFile(context, record)
                 }else{
-                    connectToWifi(ssid = ssid, password = password, state = 3, status = {Int -> Unit})
-                    writeToFile(context, "${getCurrentTime()} : Connection Failure\n")
+                    connectToWifi(ssid = ssid, password = password, state = 3, status = {Unit})
+                    writeToFile(context, "$currentTime : Connection Failure\n")
                 }
             }
         }
     }
 
-    fun writeToFile(context: MainActivity, data: String) {
+    private fun writeToFile(context: MainActivity, data: String) {
         val file = File(context.filesDir, "power_records.txt")
         try {
             FileOutputStream(file, true).use { output ->
@@ -315,7 +312,7 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    fun clearFile(context: MainActivity) {
+    private fun clearFile(context: MainActivity) {
         val file = File(context.filesDir, "power_records.txt")
         try {
             FileOutputStream(file).use { output ->

@@ -21,7 +21,6 @@ class DeviceScanner(private val context: Context) {
         @Deprecated("Deprecated in Java")
         override fun doInBackground(vararg params: Void?): List<String> {
             val deviceList = mutableListOf<String>()
-            val wifiManager = context.applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
 
             Log.d("DeviceScanner", "Starting scan in range 192.168.y.z")
 
@@ -31,11 +30,6 @@ class DeviceScanner(private val context: Context) {
 
                     // Log each host address being scanned
                     Log.d("DeviceScanner", "Scanning IP: $hostAddress")
-
-                    // Check if the specific IP address is being scanned
-                    //if (hostAddress == "192.168.240.238") {
-                        //Log.d("DeviceScanner", "Specific IP 192.168.240.238 is being scanned")
-                    //}
 
                     try {
                         val socket = Socket()

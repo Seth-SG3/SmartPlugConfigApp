@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.ui.Alignment
@@ -28,7 +27,6 @@ import java.net.URL
 
 class MainViewModel : ViewModel() {
     private val _ipAddress = mutableStateOf<String?>(null)
-    val ipAddress: State<String?> = _ipAddress
 
     fun setIpAddress(ip: String) {
         _ipAddress.value = ip
@@ -60,7 +58,7 @@ class MainViewModel : ViewModel() {
                 .background(Color(0xFF00B140))
 
         ) {
-            RefreshWifiButton(activity = activity, status = status)
+            RefreshWifiButton(activity = activity)
             activity.DisplayPlugNetworks(activity, plugWifiNetworks, status = status, state = state)
             ReturnWifiButton(status = status)
         }
@@ -68,7 +66,7 @@ class MainViewModel : ViewModel() {
     }
 
     @Composable
-    fun ChooseMifiNetwork(activity: MainActivity, status: (Int) -> Unit) {
+    fun ChooseMifiNetwork(activity: MainActivity, status: (Int) -> Unit, mifiNetwork: (String) -> Unit) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
@@ -77,8 +75,8 @@ class MainViewModel : ViewModel() {
                 .background(Color(0xFF00B140))
 
         ) {
-            RefreshMifiButton(activity = activity, status = status)
-            activity.DisplayMifiNetworks(activity, status = status)
+            RefreshMifiButton(activity = activity)
+            activity.DisplayMifiNetworks(status = status, mifiNetwork = mifiNetwork)
             ReturnWifiButton(status = status)
         }
     }
@@ -146,10 +144,6 @@ class MainViewModel : ViewModel() {
         } else {
             return "Unable to open hotspot settings."
         }
-    }
-
-    fun ipScan(): String {
-        return "Scanning for IP Address..."
     }
 
     fun sendMQTTConfig(onResult: (String) -> Unit) {

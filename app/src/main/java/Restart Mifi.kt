@@ -174,9 +174,9 @@ fun getPhoneMacAddress(){
 fun whitelist(){
     Log.d("MAC", plugMacAddress)
     Log.d("MAC", phoneMacAddress)
-    val MACAddresses =  listOf(plugMacAddress, phoneMacAddress)
+    val macAddresses =  listOf(plugMacAddress, phoneMacAddress)
     var int = 1
-    for (address in MACAddresses) {
+    for (address in macAddresses) {
 
         val jsonPayload = Gson().toJson(
             mapOf(

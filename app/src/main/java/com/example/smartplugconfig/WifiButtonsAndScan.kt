@@ -16,7 +16,7 @@ import androidx.compose.ui.graphics.Color
 
 // Adds a button to allow refresh of networks if it doesn't appear
 @Composable
-fun RefreshWifiButton(activity: MainActivity, status: (Int) -> Unit) {
+fun RefreshWifiButton(activity: MainActivity) {
     Button(onClick = {
         activity.updateWifiScan()
     }, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0033A0))) {
@@ -61,7 +61,7 @@ fun ReturnWifiButton(status: (Int) -> Unit) {
 
 // Adds a button to allow refresh of networks if it doesn't appear
 @Composable
-fun RefreshMifiButton(activity: MainActivity, status: (Int) -> Unit) {
+fun RefreshMifiButton(activity: MainActivity) {
     Button(onClick = {
         activity.updateWifiScan()
     },colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0033A0))) {
@@ -70,14 +70,13 @@ fun RefreshMifiButton(activity: MainActivity, status: (Int) -> Unit) {
 }
 
 @Composable
-fun MainActivity.DisplayMifiNetworks(activity: MainActivity, status: (Int) -> Unit){
+fun MainActivity.DisplayMifiNetworks(status: (Int) -> Unit, mifiNetwork: (String) -> Unit){
     Log.d("hi again", "It should be scanning now?")
 
     // For each network add a button to connect
     mifiNetworks.forEach { ssid ->
         Button(onClick = {
-            mifiNetworks.clear()
-            mifiNetworks.add(ssid)
+            mifiNetwork(ssid)
             status(5)
         },colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0033A0))) {
             Text(ssid, color = Color.White)
