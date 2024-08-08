@@ -16,17 +16,18 @@ import mqtt.packets.Qos
 import mqtt.packets.mqtt.MQTTConnect
 import mqtt.packets.mqtt.MQTTPublish
 import org.json.JSONObject
+import socket.tls.TLSSettings
 
 
 @OptIn(ExperimentalUnsignedTypes::class)
-fun sendMQTTmessage(command : String, payload : String? = "") {
+fun sendMQTTmessage(command : String, payload : String? = "", host : String, port : Int) {
     CoroutineScope(Dispatchers.Main).launch {
         withContext(Dispatchers.IO) {
             try {
                 val client = MQTTClient(
                     MQTTVersion.MQTT5,
-                    "192.168.200.233",
-                    1883,
+                    host,
+                    port,
                     null
                 ) {
                     println(it.payload?.toByteArray()?.decodeToString())
@@ -95,7 +96,9 @@ fun setupMqttBroker(context: Context){
                             }
                         }
                     }
-                })
+                }, port = 8883
+                    //tlsSettings = TLSSettings(keyStoreFilePath = "/storage/emulated/0/Android/data/com.example.smartplugconfig/files/keyStore.p12", keyStorePassword = "password")
+                    )
                 broker.listen()
                 Log.d("MQTT", "broker setup :)")
             }

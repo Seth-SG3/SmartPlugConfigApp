@@ -26,7 +26,8 @@ import java.util.concurrent.Executor
 
 class MainViewModel : ViewModel() {
     private val _ipAddress = mutableStateOf<String?>(null)
-    private val _ipAddressMQTT = mutableStateOf<String?>(null)
+    val _ipAddressMQTT = mutableStateOf<String?>(null)
+    private val _port = 8883
 
 
     companion object {
@@ -194,9 +195,17 @@ class MainViewModel : ViewModel() {
         val ip = _ipAddress.value
         val host = _ipAddressMQTT.value
         val topic = "smartPlug"
+        val port = _port
+
+        if (ip == null){
+            Log.d("sendMQTTConfig", "plug ip not found")
+        }
+        if (host == null){
+            Log.d("sendMQTTConfig", "device ip not found")
+        }
 
         val urlString =
-            "http://${ip}/cm?cmnd=Backlog%20MqttHost%20$host%3B%20MqttUser%20Test1%3B%20MqttPassword%20Test2%3B%20Topic%20$topic%3B%20SetOption140%201%3B%20MqttRetry%2010%3B%20MqttWifiTimeout%2020000%3B%20TelePeriod%2060"
+            "http://${ip}/cm?cmnd=Backlog%20MqttHost%20$host%3B%20MqttPort%20$port%3B%20MqttUser%20Test1%3B%20MqttPassword%20Test2%3B%20Topic%20$topic%3B%20SetOption140%201%3B%20MqttRetry%2010%3B%20MqttWifiTimeout%2020000%3B%20TelePeriod%2060"
         return try {
             Log.d("sendMQTTConfig", "Attempting to send request to $urlString")
             val url = URL(urlString)
@@ -258,7 +267,7 @@ class MainViewModel : ViewModel() {
                     })
 
                     Log.d("getPowerReading", "Sending MQTT command to get power reading")
-                    sendMQTTmessage("Status","8")
+                    _ipAddressMQTT.value?.let { sendMQTTmessage("Status","8", it, _port) }
 
                     latch.await()
                     powerReadingResult ?: "Error: No power reading obtained"
@@ -288,7 +297,7 @@ class MainViewModel : ViewModel() {
                             "isLocalOnlyHotspotEnabled",
                             "Device IP Address: ${address.hostAddress}"
                         )
-                        if (_ipAddressMQTT.value != null) {
+                        if (_ipAddressMQTT.value == null) {
                             _ipAddressMQTT.value = address.hostAddress
                         }
                         return true
