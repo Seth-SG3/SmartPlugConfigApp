@@ -82,19 +82,17 @@ class MainViewModel : ViewModel() {
     }
 
     fun connectPlugToMifi(activity: MainActivity, status: (Int) -> Unit, ssid: String, password: String) {
-        if (activity.mifiNetworks.size == 1) {
-            this.sendWifiConfig(ssid, password){
-                    result -> if (result.contains("error", ignoreCase = true)){
-                Log.e("Error", "Couldn't connect plug to MiFi")
-                status(1)
-            }else{
-                Log.d("Success", "Plug and MiFi are connected")
-                status(6)
-            }
-            }
+
+        this.sendWifiConfig(ssid, password){
+                result -> if (result.contains("error", ignoreCase = true)){
+            Log.e("Error", "Couldn't connect plug to MiFi")
+            status(1)
         }else{
-            Log.e("Error", "Length of MiFi should be one")
+            Log.d("Success", "Plug and MiFi are connected")
+            status(6)
         }
+        }
+
     }
 
     fun sendWifiConfig( ssid: String = "Pixel", password: String = "intrasonics",onResult: (String) -> Unit) {

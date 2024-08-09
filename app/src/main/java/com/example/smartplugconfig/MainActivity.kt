@@ -16,6 +16,7 @@ import android.os.Bundle
 import android.os.PowerManager
 import android.provider.Settings
 import android.util.Log
+import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -239,8 +240,9 @@ class MainActivity : ComponentActivity() {
     fun DataCycle(viewModel: MainViewModel, ssid: String, password: String) {
         var power by remember { mutableStateOf("Place") }
         var currentTime by remember { mutableStateOf(getCurrentTime()) }
-        val coroutineScope = rememberCoroutineScope()
-        getPhoneMacAddress()
+        LaunchedEffect(Unit){
+            getPhoneMacAddress()
+        }
         Box(
             contentAlignment = Alignment.Center,
             modifier = Modifier.fillMaxSize()
@@ -260,7 +262,18 @@ class MainActivity : ComponentActivity() {
 
                 }, colors = ButtonDefaults.buttonColors(containerColor = Color.Blue) // Set button color
                 ) {
-                    Text("Send Wifi config", color = Color.White)
+                    Text("Restart Mi-Fi", color = Color.White)
+                }
+                Spacer(modifier = Modifier.height(20.dp))
+                Button(onClick = {
+                    setContentView(R.layout.activity_main)
+                    val file = readFromFile(this@MainActivity)
+                    Log.d("file", "$file")
+                    val textView: TextView = findViewById(R.id.textView)
+                    textView.text = file
+                }, colors = ButtonDefaults.buttonColors(containerColor = Color.Blue) // Set button color
+                ) {
+                    Text("Read power values", color = Color.White)
                 }
         }
         }
@@ -269,14 +282,13 @@ class MainActivity : ComponentActivity() {
             var counter = 0
 
             while (true) {
-                coroutineScope.launch {
-                    currentTime = getCurrentTime()
-                    power = writeData(viewModel, context = this@MainActivity, ssid = ssid, password = password, currentTime = currentTime)
-                }
+                currentTime = getCurrentTime()
+                power = writeData(viewModel, context = this@MainActivity, ssid = ssid, password = password, currentTime = currentTime)
                 counter += 1
                 delay(15000) // 15 seconds delay
                 if (counter % (10*60*60/15) == 0){
                     restartMiFiDongle()
+                    delay(100*1000) //delay to give enough time for it to reset
                 }
             }
         }
@@ -309,6 +321,15 @@ class MainActivity : ComponentActivity() {
             }
         } catch (e: IOException) {
             e.printStackTrace()
+        }
+    }
+
+    fun readFromFile(context: MainActivity): String {
+        val file = File(context.filesDir, "power_records.txt")
+        return if (file.exists()) {
+            file.readText()
+        } else {
+            "File not found"
         }
     }
 

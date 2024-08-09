@@ -39,6 +39,8 @@ fun ButtonsWithTextOutput(
 ) {
     var mifiSsid by remember { mutableStateOf("ssid")}
     var status by remember { mutableIntStateOf(1) }
+    var scanCounter by remember { mutableIntStateOf(1) }
+
     val ipsosBlue = Color(0xFF0033A0) // Ipsos Blue color
     val ipsosGreen = Color(0xFF00B140) // Ipsos Green color
     var isScanning by remember { mutableStateOf(false) }
@@ -135,7 +137,7 @@ fun ButtonsWithTextOutput(
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = ipsosBlue)
                 ) {
-                    Text("Pull power data", color = Color.White)
+                    Text("1.3", color = Color.White)
                 }
                 Spacer(modifier = Modifier.height(20.dp))
                 Text(
@@ -148,7 +150,7 @@ fun ButtonsWithTextOutput(
         }
 
 
-        2 -> {      // Allow connections to the plug wifi
+        2 -> {Log.d("Status", "Status = $status")      // Allow connections to the plug wifi
             viewModel.connectToPlugWifi(
                 activity = activity,
                 plugWifiNetworks = plugWifiNetworks,
@@ -156,10 +158,10 @@ fun ButtonsWithTextOutput(
                 state = status
             )
         }
-        3 -> {
+        3 -> {Log.d("Status", "Status = $status")
             status = 2
         }
-        4 -> {
+        4 -> {Log.d("Status", "Status = $status")
             // Choose MiFi Network
             viewModel.ChooseMifiNetwork(
                 activity = activity,
@@ -168,7 +170,7 @@ fun ButtonsWithTextOutput(
             )
 
         }
-        5 -> {
+        5 -> {Log.d("Status", "Status = $status")
             // Send plug the mifi details
 
             Text(
@@ -177,7 +179,7 @@ fun ButtonsWithTextOutput(
                 fontWeight = FontWeight.Bold, // Make text bold
                 color = Color.Black // Text color
             )
-            @Suppress("NAME_SHADOWING") val mifiSsid: String = activity.mifiNetworks.single()
+
             viewModel.connectPlugToMifi(
                 activity = activity,
                 status =  {status = it},
@@ -187,7 +189,7 @@ fun ButtonsWithTextOutput(
 
 
         }
-        6 -> {
+        6 -> {Log.d("Status", "Status = $status")
             // Connect to mifi device
             Text(
                 text = "Connecting phone to MiFi device",
@@ -199,10 +201,11 @@ fun ButtonsWithTextOutput(
 
 
         }
-        7-> {
+        7-> {Log.d("Status", "Status = $status")
             status = 4
         }
-        8->{
+        8->{Log.d("Status", "Status = $status")
+
             isScanning = true
             viewModel.scanDevices(context) { result ->
                 isScanning = false
@@ -211,20 +214,30 @@ fun ButtonsWithTextOutput(
                     setCurrentTextOutput(result)
                         result.let { ip -> viewModel.setIpAddress(ip) } // Set the IP address in the ViewModel.
                         status = 10
+                        scanCounter = 0
                     }else{
-                        status = 8
+                        status = 9
                     }
                 }
             }
         }
-        10 -> {
+        9->{Log.d("Status", "Status = $status")
+            if (scanCounter<3){
+                status = 8
+            }else {
+                status = 2
+            }
+        }
+        10 -> {Log.d("Status", "Status = $status")
+
+
             activity.DataCycle(viewModel, ssid = mifiSsid, password = "1234567890")
 
         }
 
 
 
-        else -> {}
+        else -> {Log.d("Status", "Status = $status")}
     }
 }
 
