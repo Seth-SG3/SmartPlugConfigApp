@@ -147,6 +147,7 @@ class MainViewModel : ViewModel() {
                     passphrase = "intrasonics",
                     securityType = SoftApConfiguration.SECURITY_TYPE_WPA2_PSK
                 )
+                .setHiddenSsid(false)
                 .build(),
             executor = null,
             callback = object : WifiManager.LocalOnlyHotspotCallback() {

@@ -1,6 +1,7 @@
 package com.example.smartplugconfig.hotspot
 
 import android.annotation.SuppressLint
+import android.net.MacAddress
 import android.net.wifi.SoftApConfiguration
 import androidx.annotation.RequiresApi
 
@@ -42,6 +43,32 @@ class UnhiddenSoftApConfigurationBuilder {
         )
         return this
     }
+
+    fun setAllowedClientList(allowedClientList: List<MacAddress>): UnhiddenSoftApConfigurationBuilder {
+        builderClass.getMethod("setAllowedClientList", List::class.java).invoke(
+            builderInstance, allowedClientList
+        )
+        return this
+    }
+
+    fun setBlockedClientList(blockedClientList: List<MacAddress>): UnhiddenSoftApConfigurationBuilder {
+        builderClass.getMethod("setBlockedClientList", List::class.java).invoke(
+            builderInstance, blockedClientList
+        )
+        return this
+    }
+
+    fun setHiddenSsid(hiddenSsid:Boolean): UnhiddenSoftApConfigurationBuilder {
+        builderClass.getMethod("setHiddenSsid", Boolean::class.javaPrimitiveType).invoke(
+            builderInstance, hiddenSsid
+        )
+        return this
+    }
+
+
+
+
+
 
     fun build(): SoftApConfiguration {
         return builderClass
