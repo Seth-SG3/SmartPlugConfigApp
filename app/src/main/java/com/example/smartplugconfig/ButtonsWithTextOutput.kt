@@ -131,9 +131,7 @@ fun ButtonsWithTextOutput(
                 Spacer(modifier = Modifier.height(20.dp))
                 Button(
                     onClick = {
-                        viewModel.getPowerReading { result ->
-                            setCurrentTextOutput(result)
-                        }
+
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = ipsosBlue)
                 ) {

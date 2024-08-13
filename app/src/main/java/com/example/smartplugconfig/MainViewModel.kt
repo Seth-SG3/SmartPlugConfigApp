@@ -24,12 +24,22 @@ import java.io.BufferedReader
 import java.net.HttpURLConnection
 import java.net.URL
 
+val ipAddress = mutableStateOf<String?>(null)
 
 class MainViewModel : ViewModel() {
-    private val _ipAddress = mutableStateOf<String?>(null)
+
 
     fun setIpAddress(ip: String) {
-        _ipAddress.value = ip
+        ipAddress.value = ip
+    }
+
+    companion object {
+        @Volatile private var instance: MainViewModel? = null
+
+        fun getInstance(): MainViewModel =
+            instance ?: synchronized(this) {
+                instance ?: MainViewModel().also { instance = it }
+            }
     }
 
     fun scanDevices(context: Context, onScanCompleted: (String?) -> Unit) {
@@ -41,7 +51,7 @@ class MainViewModel : ViewModel() {
                 } else {
                     devices.joinToString("\\n")
                 }
-                _ipAddress.value = result
+                ipAddress.value = result
                 onScanCompleted(result)
             }
         })
@@ -152,7 +162,7 @@ class MainViewModel : ViewModel() {
     }
 
     private suspend fun sendMQTTConfigInternal(): String {
-        val ip = _ipAddress.value
+        val ip = ipAddress.value
         val urlString = "http://${ip}/cm?cmnd=Backlog%20MqttHost%20testHost%3B%20MqttUser%20Test1%3B%20MqttPassword%20Test2%3B%20Topic%20smartPlugTest"
         return try {
             Log.d("sendMQTTConfig", "Attempting to send request to $urlString")
@@ -190,7 +200,8 @@ class MainViewModel : ViewModel() {
     private suspend fun getPowerReadingInternal(): String {
 
 
-        val ip = _ipAddress.value
+        val ip = ipAddress.value
+
         val urlString = "http://${ip}/cm?cmnd=Status%208"
         return try {
             Log.d("getPowerReading", "Attempting to send request to $urlString")

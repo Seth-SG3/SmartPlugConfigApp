@@ -3,6 +3,8 @@ package com.example.smartplugconfig
 //noinspection UsingMaterialAndMaterial3Libraries
 import android.Manifest
 import android.annotation.SuppressLint
+import android.app.AlarmManager
+import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -60,6 +62,7 @@ import java.io.FileOutputStream
 import java.io.IOException
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
+import java.util.Calendar
 import kotlin.coroutines.resume
 
 
@@ -76,18 +79,16 @@ class MainActivity : ComponentActivity() {
     var plugWifiNetworks = mutableStateListOf<String>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        initialisation()
         super.onCreate(savedInstanceState)
+        initialisation()
+
         enableEdgeToEdge()
         setContent {
             SmartPlugConfigTheme {
                 SmartPlugConfigApp(activity = this, plugWifiNetworks = plugWifiNetworks)
             }
-            if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-                requestPermissions(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION), 1)
-            }
         }
-        clearFile(this@MainActivity)
+        Log.d("hi", "finished oncreate")
     }
 
     private fun initialisation() {
@@ -106,8 +107,8 @@ class MainActivity : ComponentActivity() {
             ContextCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED
         }
         val powerManager = getSystemService(POWER_SERVICE) as PowerManager
-        if (!powerManager.isIgnoringBatteryOptimizations(packageName)){
-            val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply{
+        if (!powerManager.isIgnoringBatteryOptimizations(packageName)) {
+            val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
                 data = Uri.parse("package:$packageName")
             }
             startActivity(intent)
@@ -238,7 +239,12 @@ class MainActivity : ComponentActivity() {
 
     @Composable
     fun DataCycle(viewModel: MainViewModel, ssid: String, password: String) {
-        var power by remember { mutableStateOf("Place") }
+        // Start the PowerReadingService
+
+        val intent = Intent(this, PowerReadingService::class.java)
+        startService(intent)
+    }
+    /*        var power by remember { mutableStateOf("Place") }
         var currentTime by remember { mutableStateOf(getCurrentTime()) }
         LaunchedEffect(Unit){
             getPhoneMacAddress()
@@ -280,69 +286,21 @@ class MainActivity : ComponentActivity() {
 
         LaunchedEffect(Unit) {
             var counter = 0
-
+            Log.d("DataCycle", "Starting data cycle")
             while (true) {
                 currentTime = getCurrentTime()
                 power = writeData(viewModel, context = this@MainActivity, ssid = ssid, password = password, currentTime = currentTime)
                 counter += 1
                 delay(15000) // 15 seconds delay
-                if (counter % (10*60*60/15) == 0){
+                if (counter % (3*60*60/15) == 0){
                     restartMiFiDongle()
                     delay(100*1000) //delay to give enough time for it to reset
                 }
             }
         }
-    }
-
-    private suspend fun writeData(viewModel: MainViewModel, context: MainActivity, ssid: String, password: String, currentTime: String): String {
-        return suspendCancellableCoroutine { cont ->
-            viewModel.getPowerReading { powerReading ->
-                cont.resume(powerReading)
-                // Check network connection
-                if (powerReading != "ConnectionFailure") {
+    }*/
 
 
-                    // Write to file
-                    val record = "$currentTime - Power: $powerReading\n"
-                    writeToFile(context, record)
-                }else{
-                    connectToWifi(ssid = ssid, password = password, state = 3, status = {Unit})
-                    writeToFile(context, "$currentTime : Connection Failure\n")
-                }
-            }
-        }
-    }
-
-    private fun writeToFile(context: MainActivity, data: String) {
-        val file = File(context.filesDir, "power_records.txt")
-        try {
-            FileOutputStream(file, true).use { output ->
-                output.write(data.toByteArray())
-            }
-        } catch (e: IOException) {
-            e.printStackTrace()
-        }
-    }
-
-    fun readFromFile(context: MainActivity): String {
-        val file = File(context.filesDir, "power_records.txt")
-        return if (file.exists()) {
-            file.readText()
-        } else {
-            "File not found"
-        }
-    }
-
-    private fun clearFile(context: MainActivity) {
-        val file = File(context.filesDir, "power_records.txt")
-        try {
-            FileOutputStream(file).use { output ->
-                output.write("".toByteArray())
-            }
-        } catch (e: IOException) {
-            e.printStackTrace()
-        }
-    }
 }
 
 @Composable
