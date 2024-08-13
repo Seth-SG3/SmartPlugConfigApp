@@ -44,6 +44,7 @@ class UnhiddenSoftApConfigurationBuilder {
         return this
     }
 
+    //testing
     fun setAllowedClientList(allowedClientList: List<MacAddress>): UnhiddenSoftApConfigurationBuilder {
         builderClass.getMethod("setAllowedClientList", List::class.java).invoke(
             builderInstance, allowedClientList
@@ -51,6 +52,7 @@ class UnhiddenSoftApConfigurationBuilder {
         return this
     }
 
+    //testing not sure on the cladd definition at the end
     fun setBlockedClientList(blockedClientList: List<MacAddress>): UnhiddenSoftApConfigurationBuilder {
         builderClass.getMethod("setBlockedClientList", List::class.java).invoke(
             builderInstance, blockedClientList
@@ -58,6 +60,8 @@ class UnhiddenSoftApConfigurationBuilder {
         return this
     }
 
+
+    //testing
     fun setHiddenSsid(hiddenSsid:Boolean): UnhiddenSoftApConfigurationBuilder {
         builderClass.getMethod("setHiddenSsid", Boolean::class.javaPrimitiveType).invoke(
             builderInstance, hiddenSsid
