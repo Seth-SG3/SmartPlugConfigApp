@@ -42,8 +42,8 @@ class MainViewModel : ViewModel() {
             }
     }
 
-    fun scanDevices(context: Context, onScanCompleted: (String?) -> Unit) {
-        val deviceScanner = DeviceScanner(context)
+    fun scanDevices(onScanCompleted: (String?) -> Unit) {
+        val deviceScanner = DeviceScanner()
         deviceScanner.scanDevices(object : DeviceScanner.ScanCallback {
             override fun onScanCompleted(devices: List<String>) {
                 val result = if (devices.isEmpty()) {
@@ -91,7 +91,7 @@ class MainViewModel : ViewModel() {
         }
     }
 
-    fun connectPlugToMifi(activity: MainActivity, status: (Int) -> Unit, ssid: String, password: String) {
+    fun connectPlugToMifi(status: (Int) -> Unit, ssid: String, password: String) {
 
         this.sendWifiConfig(ssid, password){
                 result -> if (result.contains("error", ignoreCase = true)){
@@ -233,7 +233,7 @@ class MainViewModel : ViewModel() {
         } catch (e: Exception) {
             val errorMessage = "Error: ${e.localizedMessage ?: "An unknown error occurred"}"
             Log.e("getPowerReading", errorMessage, e)
-            errorMessage
+
             return "ConnectionFailure"
         }
     }

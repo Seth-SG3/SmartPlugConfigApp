@@ -3,8 +3,6 @@ package com.example.smartplugconfig
 //noinspection UsingMaterialAndMaterial3Libraries
 import android.Manifest
 import android.annotation.SuppressLint
-import android.app.AlarmManager
-import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -18,52 +16,25 @@ import android.os.Bundle
 import android.os.PowerManager
 import android.provider.Settings
 import android.util.Log
-import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.height
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshots.SnapshotStateList
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.smartplugconfig.ui.theme.SmartPlugConfigTheme
-import getPhoneMacAddress
 import getPlugMacAddress
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.suspendCancellableCoroutine
-import restartMiFiDongle
-import java.io.File
-import java.io.FileOutputStream
-import java.io.IOException
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
-import java.util.Calendar
-import kotlin.coroutines.resume
 
 
 class MainActivity : ComponentActivity() {
@@ -88,7 +59,6 @@ class MainActivity : ComponentActivity() {
                 SmartPlugConfigApp(activity = this, plugWifiNetworks = plugWifiNetworks)
             }
         }
-        Log.d("hi", "finished oncreate")
     }
 
     private fun initialisation() {
@@ -224,11 +194,6 @@ class MainActivity : ComponentActivity() {
             Toast.LENGTH_LONG
         ).show()
         status(state + 1)
-    }
-
-    @SuppressLint("MissingPermission")
-    override fun onDestroy() {
-        super.onDestroy()
     }
 
     private fun getCurrentTime(): String {

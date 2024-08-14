@@ -1,8 +1,6 @@
 package com.example.smartplugconfig
 
 import android.annotation.SuppressLint
-import android.content.Context
-import android.net.wifi.WifiManager
 import android.os.AsyncTask
 import android.util.Log
 import java.io.IOException
@@ -10,7 +8,7 @@ import java.net.InetSocketAddress
 import java.net.Socket
 
 // code from facto, class used in ip scan functionality
-class DeviceScanner(private val context: Context) {
+class DeviceScanner {
 
     fun scanDevices(callback: ScanCallback?) {
         ScanTask(callback).execute()

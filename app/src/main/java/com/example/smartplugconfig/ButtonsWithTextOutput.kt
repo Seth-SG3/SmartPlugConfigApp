@@ -104,7 +104,7 @@ fun ButtonsWithTextOutput(
                 Button(
                     onClick = {
                         isScanning = true
-                        viewModel.scanDevices(context) { result ->
+                        viewModel.scanDevices { result ->
                             isScanning = false
                             if (result != null) {
                                 setCurrentTextOutput(result)
@@ -179,7 +179,6 @@ fun ButtonsWithTextOutput(
             )
 
             viewModel.connectPlugToMifi(
-                activity = activity,
                 status =  {status = it},
                 ssid = mifiSsid,
                 password = "1234567890"
@@ -205,11 +204,10 @@ fun ButtonsWithTextOutput(
         8->{Log.d("Status", "Status = $status")
 
             isScanning = true
-            viewModel.scanDevices(context) { result ->
+            viewModel.scanDevices { result ->
                 isScanning = false
                 if (result != null) {
                     if (result != "No devices found"){
-                    setCurrentTextOutput(result)
                         result.let { ip -> viewModel.setIpAddress(ip) } // Set the IP address in the ViewModel.
                         status = 10
                         scanCounter = 0
@@ -220,10 +218,10 @@ fun ButtonsWithTextOutput(
             }
         }
         9->{Log.d("Status", "Status = $status")
-            if (scanCounter<3){
-                status = 8
+            status = if (scanCounter<3){
+                8
             }else {
-                status = 2
+                2
             }
         }
         10 -> {Log.d("Status", "Status = $status")

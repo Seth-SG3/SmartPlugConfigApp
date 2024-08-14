@@ -9,32 +9,67 @@ import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
 import android.content.Intent
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
+import android.net.NetworkRequest
+import android.net.wifi.WifiNetworkSpecifier
 import android.os.Build
+import android.os.Bundle
 import android.os.IBinder
 import android.os.PowerManager
+import android.util.Log
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
 import androidx.annotation.RequiresApi
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
+import getPhoneMacAddress
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
-import kotlinx.coroutines.withContext
+import restartMiFiDongle
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
 import java.util.Calendar
 import kotlin.coroutines.resume
 
 class PowerReadingService : Service() {
 
-
     @RequiresApi(Build.VERSION_CODES.TIRAMISU)
-    override fun onCreate() {
+    override fun onCreate() {   // Triggered once on class creation
         super.onCreate()
         startForegroundService()
         acquireWakeLock()
+        clearFile()
+        getPhoneMacAddress()
     }
 
+    private var counter by mutableIntStateOf(1)
     private val viewModel = MainViewModel.getInstance()
     private lateinit var wakeLock: PowerManager.WakeLock
     private val serviceJob = Job()
@@ -45,23 +80,31 @@ class PowerReadingService : Service() {
         releaseWakeLock()
     }
 
+
     override fun onBind(intent: Intent?): IBinder? {
         return null
     }
 
+    // Every time this is called
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        scheduleAlarm()
-        serviceScope.launch {
-            writeData(
-                viewModel,
-                "4G-UFI-CFE",
-                "1234567890",
-                "Now"
-            )  // Call the periodic task here
-        }
+        counter += 1
+        scheduleAlarm() // Set to restart after a minute
+
+        if (counter % 1440 != 0) {
+            val activityIntent = Intent(this, DataCycleActivity::class.java)
+            activityIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            startActivity(activityIntent)
+            return START_STICKY
+        } else {
+            restartMiFiDongle()
+            Log.d("PowerReading", "Restarting MiFi device")
             return START_STICKY
 
+        }
+
+
     }
+
     @SuppressLint("ForegroundServiceType")
     private fun startForegroundService() {
         val channelId = "PowerReadingServiceChannel"
@@ -81,9 +124,19 @@ class PowerReadingService : Service() {
         startForeground(1, notification)
     }
 
+    //Returns current time and date as a string
+    private fun getCurrentTime(): String {
+        val currentDateTime = LocalDateTime.now()
+        val formatter = DateTimeFormatter.ofPattern("dd-MM-yyyy HH:mm:ss")
+        return currentDateTime.format(formatter)
+    }
+
     private fun acquireWakeLock() {
         val powerManager = getSystemService(Context.POWER_SERVICE) as PowerManager
-        wakeLock = powerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "PowerReadingService::WakeLock")
+        wakeLock = powerManager.newWakeLock(
+            PowerManager.PARTIAL_WAKE_LOCK,
+            "PowerReadingService::WakeLock"
+        )
         wakeLock.acquire()
     }
 
@@ -94,10 +147,15 @@ class PowerReadingService : Service() {
     }
 
 
-    fun scheduleAlarm() {
+    private fun scheduleAlarm() {
         val alarmManager = getSystemService(Context.ALARM_SERVICE) as AlarmManager
         val intent = Intent(this, PowerReadingService::class.java)
-        val pendingIntent = PendingIntent.getService(this, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+        val pendingIntent = PendingIntent.getService(
+            this,
+            0,
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
 
 
         // Set the alarm to start at approximately 00:00
@@ -114,28 +172,42 @@ class PowerReadingService : Service() {
         )
     }
 
-
-    suspend fun writeData(viewModel: MainViewModel, ssid: String, password: String, currentTime: String): String {
+    // Gets data and then writes to a file
+    private suspend fun writeData(
+        viewModel: MainViewModel,
+        ssid: String,
+        password: String,
+        currentTime: String,
+        context: Context
+    ): String {
+        var flag:Boolean by mutableStateOf(false)
         return suspendCancellableCoroutine { cont ->
-            viewModel.getPowerReading { powerReading ->
+            viewModel.getPowerReading { powerReading -> // Gets the current power
                 cont.resume(powerReading)
                 // Check network connection
                 if (powerReading != "ConnectionFailure") {
-
-
-                    // Write to file
+                    // Write power to file
                     val record = "$currentTime - Power: $powerReading\n"
-                    writeToFile(record)
-                }else{
-                    // connectToWifi(ssid = ssid, password = password, state = 3, status = {Unit})
-                    writeToFile("$currentTime : Connection Failure\n")
+                    writeToFile(record, context = context)
+                    flag = false
+                } else {
+                    if (!flag){
+                        flag = true
+                    }else {
+                        connectToWifi(
+                            ssid = ssid,
+                            password = password
+                        ) // If connection fails it reconnects
+                        writeToFile("$currentTime : Connection Failure\n", context = context)
+                    }
                 }
             }
         }
     }
 
-    fun writeToFile(data: String) {
-        val file = File(applicationContext.filesDir, "power_records.txt")
+    // Writes to power records text file
+    private fun writeToFile(data: String, context: Context) {
+        val file = File(context.filesDir, "power_records.txt")
         try {
             FileOutputStream(file, true).use { output ->
                 output.write(data.toByteArray())
@@ -145,6 +217,7 @@ class PowerReadingService : Service() {
         }
     }
 
+    //TODO: Implement this as well as sorting out UI for this setting
     fun readFromFile(context: MainActivity): String {
         val file = File(context.filesDir, "power_records.txt")
         return if (file.exists()) {
@@ -154,8 +227,9 @@ class PowerReadingService : Service() {
         }
     }
 
-    private fun clearFile(context: MainActivity) {
-        val file = File(context.filesDir, "power_records.txt")
+    //Clears the file on restart
+    private fun clearFile() {
+        val file = File(applicationContext.filesDir, "power_records.txt")
         try {
             FileOutputStream(file).use { output ->
                 output.write("".toByteArray())
@@ -165,4 +239,93 @@ class PowerReadingService : Service() {
         }
     }
 
+    // Connect to normal wifi
+    @SuppressLint("ServiceCast")
+    fun connectToWifi(ssid: String, password: String) {
+
+        val wifiNetworkSpecifier = WifiNetworkSpecifier.Builder()
+            .setSsid(ssid)
+            .setWpa2Passphrase(password)
+            .build()
+
+        val networkRequest = NetworkRequest.Builder()
+            .addTransportType(NetworkCapabilities.TRANSPORT_WIFI)
+            .setNetworkSpecifier(wifiNetworkSpecifier)
+            .build()
+
+        val connectivityManager =
+            getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        connectivityManager.requestNetwork(
+            networkRequest,
+            object : ConnectivityManager.NetworkCallback() {
+                override fun onAvailable(network: android.net.Network) {
+                    super.onAvailable(network)
+                    connectivityManager.bindProcessToNetwork(network)
+                    Log.d("WifiConnection", "Connected to $ssid")
+                }
+
+                override fun onUnavailable() {
+                    super.onUnavailable()
+                    Log.d("WifiConnection", "Connection to $ssid failed")
+                }
+            })
+
+    }
+
+
+    @SuppressLint("CoroutineCreationDuringComposition")
+    @Composable
+    fun dataCycleView() {
+        var power by remember { mutableStateOf("Initialising") }
+        val context = LocalContext.current
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier = Modifier.fillMaxSize()
+        ) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color(0xFF00B140))
+            ) {
+                LaunchedEffect(Unit) {
+                    serviceScope.launch {
+                        power =
+                            writeData(
+                                viewModel,
+                                "4G-UFI-CFE",   // TODO: Make this not hard coded
+                                "1234567890",
+                                getCurrentTime(),
+                                context = context
+                            )
+                    }
+                }
+                Text(text = power)
+                Text(text = getCurrentTime())
+                Spacer(modifier = Modifier.height(20.dp))
+                Button(
+                    onClick = {
+                        restartMiFiDongle()
+
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color.Blue) // Set button color
+                ) {
+                    Text("Restart Mi-Fi", color = Color.White)
+                }
+                Spacer(modifier = Modifier.height(20.dp))
+
+            }
+        }
+    }
+}
+
+class DataCycleActivity : ComponentActivity() {
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContent {
+            val service = PowerReadingService()
+            service.dataCycleView()
+        }
+    }
 }
