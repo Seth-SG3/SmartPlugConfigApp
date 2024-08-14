@@ -155,6 +155,7 @@ class MainViewModel : ViewModel() {
                     securityType = SoftApConfiguration.SECURITY_TYPE_WPA2_PSK
                 )
                 .setHiddenSsid(false)
+                //the next line must be commented out/set to false for the blocked client lists to work
                 .setClientControlByUserEnabled(true)
                 .setAllowedClientList(allowedClientMacs)
                 .build(),
