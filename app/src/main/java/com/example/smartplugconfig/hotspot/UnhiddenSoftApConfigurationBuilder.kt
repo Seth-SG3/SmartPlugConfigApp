@@ -52,10 +52,19 @@ class UnhiddenSoftApConfigurationBuilder {
         return this
     }
 
-    //testing not sure on the cladd definition at the end
+    //testing not sure on the class definition at the end
     fun setBlockedClientList(blockedClientList: List<MacAddress>): UnhiddenSoftApConfigurationBuilder {
         builderClass.getMethod("setBlockedClientList", List::class.java).invoke(
             builderInstance, blockedClientList
+        )
+        return this
+    }
+
+    //appraently this is required for whitelisting user connections.
+    //https://cs.android.com/android/platform/superproject/main/+/main:packages/modules/Wifi/framework/java/android/net/wifi/SoftApConfiguration.java;drc=55141c5f4ae8f1141c97f35a66a27ba1239dd806;l=1955
+    fun setClientControlByUserEnabled(enabled: Boolean): UnhiddenSoftApConfigurationBuilder {
+        builderClass.getMethod("setClientControlByUserEnabled", Boolean::class.javaPrimitiveType).invoke(
+            builderInstance, enabled
         )
         return this
     }
