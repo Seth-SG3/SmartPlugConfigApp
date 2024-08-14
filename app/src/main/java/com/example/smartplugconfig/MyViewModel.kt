@@ -3,6 +3,7 @@ package com.example.smartplugconfig
 import android.annotation.SuppressLint
 import android.content.Context
 import android.content.Intent
+import android.net.MacAddress
 import android.net.wifi.SoftApConfiguration
 import android.net.wifi.WifiManager
 import android.os.Build
@@ -138,6 +139,12 @@ class MainViewModel : ViewModel() {
         if (isLocalOnlyHotspotEnabled()) {
             return "Hotspot is already active."
         }
+
+        //denotes the mac addresses of devices that are permitted to
+        //join the hotspot network.
+        val allowedClientMacs = listOf(
+            MacAddress.fromString("e0:dc:ff:eb:5d:f9")
+        )
         startLocalOnlyHotspotWithConfig(
             context = context,
             config = UnhiddenSoftApConfigurationBuilder()
@@ -148,6 +155,8 @@ class MainViewModel : ViewModel() {
                     securityType = SoftApConfiguration.SECURITY_TYPE_WPA2_PSK
                 )
                 .setHiddenSsid(false)
+                .setClientControlByUserEnabled(true)
+                .setAllowedClientList(allowedClientMacs)
                 .build(),
             executor = null,
             callback = object : WifiManager.LocalOnlyHotspotCallback() {
