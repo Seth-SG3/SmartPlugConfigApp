@@ -44,6 +44,8 @@ class UnhiddenSoftApConfigurationBuilder {
         return this
     }
 
+
+
     //testing
     fun setAllowedClientList(allowedClientList: List<MacAddress>): UnhiddenSoftApConfigurationBuilder {
         builderClass.getMethod("setAllowedClientList", List::class.java).invoke(

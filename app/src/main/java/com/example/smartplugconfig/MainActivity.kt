@@ -290,13 +290,8 @@ fun ButtonsWithTextOutput(
         Spacer(modifier = Modifier.height(20.dp))
         Button(
             onClick = {
-                viewModel._ipAddressMQTT.value?.let {
-                    sendMQTTmessage(
-                        "Power",
-                        "TOGGLE",
-                        it,
-                        8883
-                    )
+                viewModel.findPlugMacAddress{ result ->
+                    setCurrentTextOutput(result)
                 }
             },
             colors = ButtonDefaults.buttonColors(containerColor = ipsosBlue)

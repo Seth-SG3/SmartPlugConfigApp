@@ -18,6 +18,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import org.json.JSONObject
 import java.io.BufferedReader
 import java.net.HttpURLConnection
 import java.net.Inet4Address
@@ -29,6 +30,49 @@ class MainViewModel : ViewModel() {
     private val _ipAddress = mutableStateOf<String?>(null)
     val _ipAddressMQTT = mutableStateOf<String?>(null)
     private val _port = 8883
+    private var plugMacAddress = ""
+
+    fun findPlugMacAddress(onResult: (String) -> Unit) {
+        viewModelScope.launch {
+            val result = findPlugMacAddressInternal()
+            onResult(result)
+        }
+
+    }
+
+    private suspend fun findPlugMacAddressInternal():String{
+
+        val urlString =
+            "http://${_ipAddress.value}/cm?cmnd=Status%205"
+        return try {
+            Log.d("MacAddress", "Attempting to send request to $urlString")
+            val url = URL(urlString)
+            withContext(Dispatchers.IO) {
+                with(url.openConnection() as HttpURLConnection) {
+                    requestMethod = "GET"
+                    Log.d("MacAddress", "Request method set to $requestMethod")
+
+                    val responseCode = responseCode
+                    Log.d("MacAddress", "Response code: $responseCode")
+                    if (responseCode == HttpURLConnection.HTTP_OK) {
+                        val response = inputStream.bufferedReader().use(BufferedReader::readText)
+                        Log.d("MacAddress", "Response: $response")
+                        val jsonObject = JSONObject(response)
+                        val statusNetObject = jsonObject.getJSONObject("StatusNET")
+                        plugMacAddress = statusNetObject.getString("Mac")
+                        statusNetObject.getString("Mac")
+
+                    } else {
+                        "HTTP error code: $responseCode"
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            val errorMessage = "Error: ${e.localizedMessage ?: "An unknown error occurred"}"
+            Log.e("MacAddress", errorMessage, e)
+            errorMessage
+        }
+    }
 
 
     companion object {
@@ -136,15 +180,25 @@ class MainViewModel : ViewModel() {
 
     @RequiresApi(33)
     fun turnOnHotspot(context: Context): String {
+
         if (isLocalOnlyHotspotEnabled()) {
             return "Hotspot is already active."
         }
 
         //denotes the mac addresses of devices that are permitted to
         //join the hotspot network.
-        val allowedClientMacs = listOf(
-            MacAddress.fromString("e0:dc:ff:eb:5d:f9")
-        )
+
+        var allowedClientMacs = listOf(
+            MacAddress.fromString("e0:dc:ff:eb:5d:f8") // personal phone for testing and accessing web UI
+        ).toMutableList() // Convert to mutable list
+
+        // Check if plugMacAddress is not an empty string
+        if (plugMacAddress != "") {
+            // Add the plugMacAddress to the list
+            allowedClientMacs.add(MacAddress.fromString(plugMacAddress))
+        }
+
+
         startLocalOnlyHotspotWithConfig(
             context = context,
             config = UnhiddenSoftApConfigurationBuilder()
@@ -157,7 +211,7 @@ class MainViewModel : ViewModel() {
                 .setHiddenSsid(false)
                 //the next line must be commented out/set to false for the blocked client lists to work
                 //allowed client list requires it to be true
-                .setClientControlByUserEnabled(true)
+                .setClientControlByUserEnabled((plugMacAddress != ""))
                 .setAllowedClientList(allowedClientMacs)
                 .build(),
             executor = null,
