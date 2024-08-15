@@ -1,9 +1,5 @@
 package com.example.smartplugconfig
 
-import android.content.Context
-import android.content.Intent
-import android.net.ConnectivityManager
-import android.provider.Settings
 import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -15,7 +11,6 @@ import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.core.content.ContextCompat.getSystemService
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.Dispatchers
@@ -109,7 +104,7 @@ class MainViewModel : ViewModel() {
 
     }
 
-    fun sendWifiConfig( ssid: String = "Pixel", password: String = "intrasonics",onResult: (String) -> Unit) {
+    private fun sendWifiConfig(ssid: String = "Pixel", password: String = "intrasonics", onResult: (String) -> Unit) {
         viewModelScope.launch {
             val result = sendWifiConfigInternal(ssid, password)
             onResult(result)
@@ -141,56 +136,6 @@ class MainViewModel : ViewModel() {
         } catch (e: Exception) {
             Log.e("sendWifiConfig", "Exception occurred", e)
             "Error: ${e.localizedMessage ?: "An unknown error occurred"}"
-        }
-    }
-
-    fun turnOnHotspot(context: Context): String {
-//         Create an Intent to open the hotspot settings
-        val intent = Intent(Settings.ACTION_WIRELESS_SETTINGS)
-
-        // Check if there is an activity that can handle this intent
-        if (intent.resolveActivity(context.packageManager) != null) {
-            // Start the settings activity
-            context.startActivity(intent)
-            return "Opening hotspot settings..."
-        } else {
-            return "Unable to open hotspot settings."
-        }
-    }
-
-    fun sendMQTTConfig(onResult: (String) -> Unit) {
-        viewModelScope.launch {
-            val result = sendMQTTConfigInternal()
-            onResult(result)
-        }
-    }
-
-    private suspend fun sendMQTTConfigInternal(): String {
-        val ip = ipAddress.value
-        val urlString = "http://${ip}/cm?cmnd=Backlog%20MqttHost%20testHost%3B%20MqttUser%20Test1%3B%20MqttPassword%20Test2%3B%20Topic%20smartPlugTest"
-        return try {
-            Log.d("sendMQTTConfig", "Attempting to send request to $urlString")
-            val url = URL(urlString)
-            withContext(Dispatchers.IO) {
-                with(url.openConnection() as HttpURLConnection) {
-                    requestMethod = "GET"
-                    Log.d("sendMQTTConfig", "Request method set to $requestMethod")
-
-                    val responseCode = responseCode
-                    Log.d("sendMQTTConfig", "Response code: $responseCode")
-                    if (responseCode == HttpURLConnection.HTTP_OK) {
-                        val response = inputStream.bufferedReader().use(BufferedReader::readText)
-                        Log.d("sendMQTTConfig", "Response: $response")
-                        "Response: $response"
-                    } else {
-                        "HTTP error code: $responseCode"
-                    }
-                }
-            }
-        } catch (e: Exception) {
-            val errorMessage = "Error: ${e.localizedMessage ?: "An unknown error occurred"}"
-            Log.e("sendMQTTConfig", errorMessage, e)
-            errorMessage
         }
     }
 

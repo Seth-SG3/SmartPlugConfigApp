@@ -20,11 +20,6 @@ class DeviceScanner {
             Log.d("DeviceScanner", "Scan already in progress")
         }
     }
-
-    fun cancelScan() {
-        scanTask?.cancel(true)
-    }
-
     @SuppressLint("StaticFieldLeak")
     inner class ScanTask(private val callback: ScanCallback?) : AsyncTask<Void, Void, List<String>>() {
         @Deprecated("Deprecated in Java")

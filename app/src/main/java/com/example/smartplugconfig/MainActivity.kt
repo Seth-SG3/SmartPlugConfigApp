@@ -33,8 +33,6 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.smartplugconfig.ui.theme.SmartPlugConfigTheme
 import getPlugMacAddress
-import java.time.LocalDateTime
-import java.time.format.DateTimeFormatter
 
 class MainActivity : ComponentActivity() {
 
@@ -194,88 +192,24 @@ class MainActivity : ComponentActivity() {
         ).show()
         status(state + 1)
     }
-
-    private fun getCurrentTime(): String {
-        val currentDateTime = LocalDateTime.now()
-        val formatter = DateTimeFormatter.ofPattern("dd-MM-yyyy HH:mm:ss")
-        return currentDateTime.format(formatter)
-    }
-
     @Composable
-    fun DataCycle(viewModel: MainViewModel, ssid: String, password: String) {
+    fun DataCycle() {
         // Start the PowerReadingService
 
         val intent = Intent(this, PowerReadingService::class.java)
         startService(intent)
     }
-    /*        var power by remember { mutableStateOf("Place") }
-        var currentTime by remember { mutableStateOf(getCurrentTime()) }
-        LaunchedEffect(Unit){
-            getPhoneMacAddress()
-        }
-        Box(
-            contentAlignment = Alignment.Center,
-            modifier = Modifier.fillMaxSize()
-        ) {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center,
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(Color(0xFF00B140))
-            ){
-            Text(text = power)
-            Text(text = currentTime)
-                Spacer(modifier = Modifier.height(20.dp))
-                Button(onClick = {
-                    restartMiFiDongle()
-
-                }, colors = ButtonDefaults.buttonColors(containerColor = Color.Blue) // Set button color
-                ) {
-                    Text("Restart Mi-Fi", color = Color.White)
-                }
-                Spacer(modifier = Modifier.height(20.dp))
-                Button(onClick = {
-                    setContentView(R.layout.activity_main)
-                    val file = readFromFile(this@MainActivity)
-                    Log.d("file", "$file")
-                    val textView: TextView = findViewById(R.id.textView)
-                    textView.text = file
-                }, colors = ButtonDefaults.buttonColors(containerColor = Color.Blue) // Set button color
-                ) {
-                    Text("Read power values", color = Color.White)
-                }
-        }
-        }
-
-        LaunchedEffect(Unit) {
-            var counter = 0
-            Log.d("DataCycle", "Starting data cycle")
-            while (true) {
-                currentTime = getCurrentTime()
-                power = writeData(viewModel, context = this@MainActivity, ssid = ssid, password = password, currentTime = currentTime)
-                counter += 1
-                delay(15000) // 15 seconds delay
-                if (counter % (3*60*60/15) == 0){
-                    restartMiFiDongle()
-                    delay(100*1000) //delay to give enough time for it to reset
-                }
-            }
-        }
-    }*/
-
 
 }
 
 @Composable
 fun SmartPlugConfigApp(viewModel: MainViewModel = viewModel(), activity: MainActivity, plugWifiNetworks: SnapshotStateList<String>) {
-    var currentTextOutput by remember { mutableStateOf("output") }
+    val currentTextOutput by remember { mutableStateOf("output") }
     val context = LocalContext.current
 
     ButtonsWithTextOutput(
         textToDisplay = currentTextOutput,
-        setCurrentTextOutput = { currentTextOutput = it },
-        context = context,
+
         viewModel = viewModel,
         activity = activity,
         plugWifiNetworks = plugWifiNetworks

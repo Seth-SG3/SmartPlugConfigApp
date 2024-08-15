@@ -6,6 +6,7 @@ import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody
+import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.Response
 import org.json.JSONObject
 import java.io.BufferedReader
@@ -26,7 +27,7 @@ fun restartMiFiDongle() {
 
     val jsonPayload = Gson().toJson(mapOf("funcNo" to 1013))
     val mediaType = "application/json; charset=utf-8".toMediaType()
-    val requestBody = RequestBody.create(mediaType, jsonPayload)
+    val requestBody = jsonPayload.toRequestBody(mediaType)
 
     // Create the restart request
     val restartRequestBuilder = Request.Builder()
@@ -108,7 +109,7 @@ fun getPhoneMacAddress(){
 
     val jsonPayload = Gson().toJson(mapOf("funcNo" to 1011))
     val mediaType = "application/json; charset=utf-8".toMediaType()
-    val requestBody = RequestBody.create(mediaType, jsonPayload)
+    val requestBody = jsonPayload.toRequestBody(mediaType)
 
     // Create the restart request
     val requestBuilder = Request.Builder()
@@ -221,7 +222,7 @@ Format of request is
 fun sendMiFiRequest(jsonPayload: String, url: String = "http://192.168.100.1/ajax"){
 
     val mediaType = "application/json; charset=utf-8".toMediaType()
-    val requestBody = RequestBody.create(mediaType, jsonPayload)
+    val requestBody = jsonPayload.toRequestBody(mediaType)
     val client = OkHttpClient()
 
 

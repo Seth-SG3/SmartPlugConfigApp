@@ -1,6 +1,5 @@
 package com.example.smartplugconfig
 
-import android.content.Context
 import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
@@ -30,8 +29,6 @@ import kotlinx.coroutines.delay
 @Composable
 fun ButtonsWithTextOutput(
     textToDisplay: String,
-    setCurrentTextOutput: (String) -> Unit,
-    context: Context,
     viewModel: MainViewModel,
     modifier: Modifier = Modifier,
     activity: MainActivity,
@@ -81,52 +78,6 @@ fun ButtonsWithTextOutput(
                     colors = ButtonDefaults.buttonColors(containerColor = ipsosBlue) // Set button color
                 ) {
                     Text("Connect to Plug", color = Color.White)
-                }
-                Spacer(modifier = Modifier.height(20.dp))
-                Button(onClick = {
-                    viewModel.sendWifiConfig { result ->
-                        setCurrentTextOutput(result)
-                    }
-                },            colors = ButtonDefaults.buttonColors(containerColor = ipsosBlue) // Set button color
-                ) {
-                    Text("Send Wifi config", color = Color.White)
-                }
-                Spacer(modifier = Modifier.height(20.dp))
-                Button(onClick = {
-                    val result = viewModel.turnOnHotspot(context)
-                    setCurrentTextOutput(result)
-                },
-                    colors = ButtonDefaults.buttonColors(containerColor = ipsosBlue) // Set button color
-                ) {
-                    Text("Switch on Hotspot", color = Color.White)
-                }
-                Spacer(modifier = Modifier.height(20.dp))
-                Button(
-                    onClick = {
-                        isScanning = true
-                        viewModel.scanDevices { result ->
-                            isScanning = false
-                            if (result != null) {
-                                setCurrentTextOutput(result)
-                            }
-                            result?.let { ip -> viewModel.setIpAddress(ip) } // Set the IP address in the ViewModel.
-
-                        }
-                    },
-                    colors = ButtonDefaults.buttonColors(containerColor = ipsosBlue) // Set button color
-                ) {
-                    Text("Find IP address of plug", color = Color.White)
-                }
-                Spacer(modifier = Modifier.height(20.dp))
-                Button(
-                    onClick = {
-                        viewModel.sendMQTTConfig { result ->
-                            setCurrentTextOutput(result)
-                        }
-                    },
-                    colors = ButtonDefaults.buttonColors(containerColor = ipsosBlue)
-                ) {
-                    Text("Send MQTT config", color = Color.White)
                 }
                 Spacer(modifier = Modifier.height(20.dp))
                 Button(
@@ -227,7 +178,7 @@ fun ButtonsWithTextOutput(
         10 -> {Log.d("Status", "Status = $status")
 
 
-            activity.DataCycle(viewModel, ssid = mifiSsid, password = "1234567890")
+            activity.DataCycle()
 
         }
 

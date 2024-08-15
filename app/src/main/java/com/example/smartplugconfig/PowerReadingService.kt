@@ -99,10 +99,7 @@ class PowerReadingService : Service() {
             restartMiFiDongle()
             Log.d("PowerReading", "Restarting MiFi device")
             return START_STICKY
-
         }
-
-
     }
 
     @SuppressLint("ForegroundServiceType")
