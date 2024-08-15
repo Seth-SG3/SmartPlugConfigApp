@@ -16,6 +16,7 @@ import mqtt.packets.Qos
 import mqtt.packets.mqtt.MQTTConnect
 import mqtt.packets.mqtt.MQTTPublish
 import org.json.JSONObject
+import socket.tls.TLSClientSettings
 import socket.tls.TLSSettings
 
 
@@ -28,7 +29,9 @@ fun sendMQTTmessage(command : String, payload : String? = "", host : String, por
                     MQTTVersion.MQTT5,
                     host,
                     port,
-                    null
+                    TLSClientSettings(
+                        serverCertificate = "/storage/emulated/0/Android/data/com.example.smartplugconfig/files/server.crt"
+                    )
                 ) {
                     println(it.payload?.toByteArray()?.decodeToString())
                 }
@@ -96,8 +99,8 @@ fun setupMqttBroker(context: Context){
                             }
                         }
                     }
-                }, port = 8883
-                    //tlsSettings = TLSSettings(keyStoreFilePath = "/storage/emulated/0/Android/data/com.example.smartplugconfig/files/keyStore.p12", keyStorePassword = "password")
+                }, port = 8883,
+                    tlsSettings = TLSSettings(keyStoreFilePath = "/storage/emulated/0/Android/data/com.example.smartplugconfig/files/keyStore.p12", keyStorePassword = "password")
                     )
                 broker.listen()
                 Log.d("MQTT", "broker setup :)")
