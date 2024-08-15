@@ -36,7 +36,6 @@ import getPlugMacAddress
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 
-
 class MainActivity : ComponentActivity() {
 
     private val requiredPermissions = arrayOf(
@@ -48,6 +47,8 @@ class MainActivity : ComponentActivity() {
     lateinit var wifiManager: WifiManager
     var mifiNetworks = mutableStateListOf<String>()
     var plugWifiNetworks = mutableStateListOf<String>()
+    lateinit var connectivityManager: ConnectivityManager
+
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -69,6 +70,7 @@ class MainActivity : ComponentActivity() {
 
     private fun wifiManagerInitialisation() {
         wifiManager = applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
+        connectivityManager = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
     }
 
     @SuppressLint("BatteryLife")
@@ -120,8 +122,7 @@ class MainActivity : ComponentActivity() {
             .setNetworkSpecifier(wifiNetworkSpecifier)
             .build()
 
-        val connectivityManager =
-            getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+
         connectivityManager.requestNetwork(
             networkRequest,
             object : ConnectivityManager.NetworkCallback() {
@@ -156,8 +157,6 @@ class MainActivity : ComponentActivity() {
             .setNetworkSpecifier(wifiNetworkSpecifier)
             .build()
 
-        val connectivityManager =
-            getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
         connectivityManager.requestNetwork(
             networkRequest,
             object : ConnectivityManager.NetworkCallback() {

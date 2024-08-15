@@ -2,6 +2,7 @@ package com.example.smartplugconfig
 
 import android.content.Context
 import android.content.Intent
+import android.net.ConnectivityManager
 import android.provider.Settings
 import android.util.Log
 import androidx.compose.foundation.background
@@ -14,6 +15,7 @@ import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.core.content.ContextCompat.getSystemService
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.Dispatchers
@@ -25,7 +27,6 @@ import java.net.HttpURLConnection
 import java.net.URL
 
 val ipAddress = mutableStateOf<String?>(null)
-
 class MainViewModel : ViewModel() {
 
 
@@ -43,6 +44,7 @@ class MainViewModel : ViewModel() {
     }
 
     fun scanDevices(onScanCompleted: (String?) -> Unit) {
+        print("Scan Device is called")
         val deviceScanner = DeviceScanner()
         deviceScanner.scanDevices(object : DeviceScanner.ScanCallback {
             override fun onScanCompleted(devices: List<String>) {
@@ -53,8 +55,10 @@ class MainViewModel : ViewModel() {
                 }
                 ipAddress.value = result
                 onScanCompleted(result)
+                // Cancel the scan once a device is found
             }
         })
+        Log.d("ViewModel"," This should have updated ip value")
     }
 
 
@@ -237,4 +241,5 @@ class MainViewModel : ViewModel() {
             return "ConnectionFailure"
         }
     }
+
 }

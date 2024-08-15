@@ -68,12 +68,12 @@ class PowerReadingService : Service() {
         clearFile()
         getPhoneMacAddress()
     }
-
     private var counter by mutableIntStateOf(1)
     private val viewModel = MainViewModel.getInstance()
     private lateinit var wakeLock: PowerManager.WakeLock
     private val serviceJob = Job()
     private val serviceScope = CoroutineScope(Dispatchers.Main + serviceJob)
+
 
     override fun onDestroy() {
         super.onDestroy()
@@ -89,7 +89,7 @@ class PowerReadingService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         counter += 1
         scheduleAlarm() // Set to restart after a minute
-
+        Log.d("counter", counter.toString())
         if (counter % 1440 != 0) {
             val activityIntent = Intent(this, DataCycleActivity::class.java)
             activityIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
@@ -137,7 +137,7 @@ class PowerReadingService : Service() {
             PowerManager.PARTIAL_WAKE_LOCK,
             "PowerReadingService::WakeLock"
         )
-        wakeLock.acquire()
+        wakeLock.acquire(10*60*1000L /*10 minutes*/)
     }
 
     private fun releaseWakeLock() {
@@ -178,32 +178,33 @@ class PowerReadingService : Service() {
         ssid: String,
         password: String,
         currentTime: String,
-        context: Context
+        context: Context,
+        connectivityManagerProvider : ConnectivityManagerProvider
     ): String {
-        var flag:Boolean by mutableStateOf(false)
         return suspendCancellableCoroutine { cont ->
             viewModel.getPowerReading { powerReading -> // Gets the current power
                 cont.resume(powerReading)
                 // Check network connection
-                if (powerReading != "ConnectionFailure") {
+                if (powerReading.contains("Watts", ignoreCase = true)) {
                     // Write power to file
+                    Log.d("PowerReading", "Power value is suitable")
                     val record = "$currentTime - Power: $powerReading\n"
                     writeToFile(record, context = context)
-                    flag = false
                 } else {
-                    if (!flag){
-                        flag = true
-                    }else {
+                    Log.d("PowerReading", "Connection has failed")
+
+
                         connectToWifi(
                             ssid = ssid,
-                            password = password
+                            password = password,
+                            connectivityManagerProvider = connectivityManagerProvider
                         ) // If connection fails it reconnects
                         writeToFile("$currentTime : Connection Failure\n", context = context)
                     }
                 }
             }
         }
-    }
+
 
     // Writes to power records text file
     private fun writeToFile(data: String, context: Context) {
@@ -241,7 +242,9 @@ class PowerReadingService : Service() {
 
     // Connect to normal wifi
     @SuppressLint("ServiceCast")
-    fun connectToWifi(ssid: String, password: String) {
+    fun connectToWifi(ssid: String, password: String, connectivityManagerProvider : ConnectivityManagerProvider) {
+
+        val connectivityManager = connectivityManagerProvider.getConnectivityManager()
 
         val wifiNetworkSpecifier = WifiNetworkSpecifier.Builder()
             .setSsid(ssid)
@@ -253,8 +256,6 @@ class PowerReadingService : Service() {
             .setNetworkSpecifier(wifiNetworkSpecifier)
             .build()
 
-        val connectivityManager =
-            getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
         connectivityManager.requestNetwork(
             networkRequest,
             object : ConnectivityManager.NetworkCallback() {
@@ -275,7 +276,7 @@ class PowerReadingService : Service() {
 
     @SuppressLint("CoroutineCreationDuringComposition")
     @Composable
-    fun dataCycleView() {
+    fun DataCycleView(connectivityManagerProvider : ConnectivityManagerProvider) {
         var power by remember { mutableStateOf("Initialising") }
         val context = LocalContext.current
         Box(
@@ -297,7 +298,8 @@ class PowerReadingService : Service() {
                                 "4G-UFI-CFE",   // TODO: Make this not hard coded
                                 "1234567890",
                                 getCurrentTime(),
-                                context = context
+                                context = context,
+                                connectivityManagerProvider
                             )
                     }
                 }
@@ -321,11 +323,15 @@ class PowerReadingService : Service() {
 }
 
 class DataCycleActivity : ComponentActivity() {
+    private lateinit var connectivityManagerProvider: ConnectivityManagerProvider
+
     override fun onCreate(savedInstanceState: Bundle?) {
+        connectivityManagerProvider = ConnectivityManagerProvider(applicationContext)
+
         super.onCreate(savedInstanceState)
         setContent {
             val service = PowerReadingService()
-            service.dataCycleView()
+            service.DataCycleView(connectivityManagerProvider)
         }
     }
 }

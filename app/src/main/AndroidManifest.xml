@@ -50,6 +50,7 @@
         <service
             android:name=".PowerReadingService"
             android:exported="true" />
+        <activity android:name=".DataCycleActivity" />
     </application>
 
 </manifest>
