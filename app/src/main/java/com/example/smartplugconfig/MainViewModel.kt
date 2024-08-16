@@ -58,7 +58,7 @@ class MainViewModel : ViewModel() {
 
 
     @Composable
-    fun connectToPlugWifi(activity: MainActivity, plugWifiNetworks: SnapshotStateList<String>, status: (Int) -> Unit, state: Int): String {
+    fun ConnectToPlugWifi(activity: MainActivity, plugWifiNetworks: SnapshotStateList<String>, onResult: (String?) -> Unit) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
@@ -68,14 +68,13 @@ class MainViewModel : ViewModel() {
 
         ) {
             RefreshWifiButton(activity = activity)
-            activity.DisplayPlugNetworks(activity, plugWifiNetworks, status = status, state = state)
-            ReturnWifiButton(status = status)
+            activity.DisplayPlugNetworks(activity, plugWifiNetworks, onResult)
+            ReturnWifiButton(onResult)
         }
-        return "Trying to connect to wifi"
     }
 
     @Composable
-    fun ChooseMifiNetwork(activity: MainActivity, status: (Int) -> Unit, mifiNetwork: (String) -> Unit) {
+    fun ChooseMifiNetwork(activity: MainActivity, mifiNetwork: (String) -> Unit, onResult: (String?) -> Unit) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
@@ -85,20 +84,20 @@ class MainViewModel : ViewModel() {
 
         ) {
             RefreshMifiButton(activity = activity)
-            activity.DisplayMifiNetworks(status = status, mifiNetwork = mifiNetwork)
-            ReturnWifiButton(status = status)
+            activity.DisplayMifiNetworks(onResult,mifiNetwork = mifiNetwork)
+            ReturnWifiButton(onResult)
         }
     }
 
-    fun connectPlugToMifi(status: (Int) -> Unit, ssid: String, password: String) {
+    fun connectPlugToMifi(password: String, ssid: String, onResult: (String?) -> Unit) {
 
         this.sendWifiConfig(ssid, password){
                 result -> if (result.contains("error", ignoreCase = true)){
             Log.e("Error", "Couldn't connect plug to MiFi")
-            status(1)
+            onResult("ConnectionFailed")
         }else{
             Log.d("Success", "Plug and MiFi are connected")
-            status(6)
+            onResult("ConnectionSuccess")
         }
         }
 

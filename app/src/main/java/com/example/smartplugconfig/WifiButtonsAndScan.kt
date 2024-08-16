@@ -25,14 +25,14 @@ fun RefreshWifiButton(activity: MainActivity) {
 }
 
 @Composable
-fun MainActivity.DisplayPlugNetworks(activity: MainActivity, plugWifiNetworks: List<String>, status: (Int) -> Unit, state:Int){
+fun MainActivity.DisplayPlugNetworks(activity: MainActivity, plugWifiNetworks: List<String>, onResult: (String?) -> Unit){
     Log.d("hi again", "It should be scanning now?")
 
     // For each network add a button to connect
     plugWifiNetworks .forEach { ssid ->
         Button(onClick = {
             if(wifiManager.isWifiEnabled){
-                activity.connectToOpenWifi(ssid, status, state = state)
+                activity.connectToOpenWifi(ssid, onResult = onResult)
                 Log.d("Initialise", "WiFi is turned on, connecting to plug")
             }else{
                 Toast.makeText(
@@ -51,9 +51,9 @@ fun MainActivity.DisplayPlugNetworks(activity: MainActivity, plugWifiNetworks: L
 
 // Adds a button to allow return to main menu
 @Composable
-fun ReturnWifiButton(status: (Int) -> Unit) {
+fun ReturnWifiButton(onResult: (String?) -> Unit) {
     Button(onClick = {
-        status(1)
+        onResult("ReturnHome")
     },colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0033A0))) {
         Text("Return to home", color = Color.White)
     }
@@ -70,14 +70,14 @@ fun RefreshMifiButton(activity: MainActivity) {
 }
 
 @Composable
-fun MainActivity.DisplayMifiNetworks(status: (Int) -> Unit, mifiNetwork: (String) -> Unit){
+fun MainActivity.DisplayMifiNetworks(onResult: (String?) -> Unit,mifiNetwork: (String) -> Unit){
     Log.d("hi again", "It should be scanning now?")
 
     // For each network add a button to connect
     mifiNetworks.forEach { ssid ->
         Button(onClick = {
             mifiNetwork(ssid)
-            status(5)
+            onResult("ConnectToMifi")
         },colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0033A0))) {
             Text(ssid, color = Color.White)
         }

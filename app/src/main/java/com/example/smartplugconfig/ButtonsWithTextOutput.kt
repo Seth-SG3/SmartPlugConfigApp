@@ -100,12 +100,26 @@ fun ButtonsWithTextOutput(
 
 
         2 -> {Log.d("Status", "Status = $status")      // Allow connections to the plug wifi
-            viewModel.connectToPlugWifi(
+            viewModel.ConnectToPlugWifi(
                 activity = activity,
                 plugWifiNetworks = plugWifiNetworks,
-                status = { status = it },
-                state = status
-            )
+            ) { result ->
+                if (result != null) {
+                    when (result) {
+                        "Success" -> {
+                            status = 4
+                        }
+
+                        "Failure" -> {
+                            status = 2
+                        }
+
+                        "ReturnHome" -> {
+                            status = 1
+                        }
+                    }
+                }
+            }
         }
         3 -> {Log.d("Status", "Status = $status")
             status = 2
@@ -114,9 +128,19 @@ fun ButtonsWithTextOutput(
             // Choose MiFi Network
             viewModel.ChooseMifiNetwork(
                 activity = activity,
-                status = {status = it},
                 mifiNetwork =  {mifiSsid = it}
-            )
+            ) { result ->
+                if (result != null) {
+                    when (result) {
+                        "ConnectToMifi" -> {
+                            status = 5
+                        }
+                        "ReturnHome" -> {
+                            status = 1
+                        }
+                    }
+                }
+            }
 
         }
         5 -> {Log.d("Status", "Status = $status")
@@ -130,10 +154,20 @@ fun ButtonsWithTextOutput(
             )
 
             viewModel.connectPlugToMifi(
-                status =  {status = it},
                 ssid = mifiSsid,
                 password = "1234567890"
-            )
+            ) { result ->
+                if (result != null) {
+                    when (result) {
+                        "ConnectionSuccess" -> {
+                            status = 6
+                        }
+                        "ConnectionFailed" -> {
+                            status = 1
+                        }
+                    }
+                }
+            }
 
 
         }
@@ -145,7 +179,22 @@ fun ButtonsWithTextOutput(
                 fontWeight = FontWeight.Bold, // Make text bold
                 color = Color.Black // Text color
             )
-            activity.connectToWifi(ssid = mifiSsid, password = "1234567890", status = {status = it}, state = status)
+            activity.connectToWifi(
+                ssid = mifiSsid,
+                password = "1234567890",
+            ) { result ->
+                if (result!= null){
+                    when (result) {
+                        "Success" -> {
+                            status = 8
+                        }
+                        "Failure" -> {
+                            status = 7
+                        }
+
+                    }
+                }
+            }
 
 
         }

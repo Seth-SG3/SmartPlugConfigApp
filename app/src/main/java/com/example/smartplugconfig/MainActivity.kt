@@ -26,7 +26,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
@@ -110,7 +109,7 @@ class MainActivity : ComponentActivity() {
         }
 
     // Connect to open wifi (no password) temporary
-    fun connectToOpenWifi(ssid: String, status: (Int) -> Unit, state: Int) {
+    fun connectToOpenWifi(ssid: String, onResult: (String?) -> Unit) {
         val wifiNetworkSpecifier = WifiNetworkSpecifier.Builder()
             .setSsid(ssid)
             .build()
@@ -128,14 +127,14 @@ class MainActivity : ComponentActivity() {
                     super.onAvailable(network)
                     connectivityManager.bindProcessToNetwork(network)
                     Log.d("WifiConnection", "Connected to $ssid")
-                    connectionSuccessful(ssid = ssid, status = status, state = state)
+                    connectionSuccessful(ssid = ssid, onResult = onResult)
                     getPlugMacAddress()
                 }
 
                 override fun onUnavailable() {
                     super.onUnavailable()
                     Log.d("WifiConnection", "Connection to $ssid failed")
-                    connectionFailed(ssid = ssid, status = status, state = state)
+                    connectionFailed(ssid = ssid, onResult = onResult)
                 }
 
             })
@@ -143,7 +142,11 @@ class MainActivity : ComponentActivity() {
 
     // Connect to normal wifi
     @SuppressLint("ServiceCast")
-    fun connectToWifi(ssid: String, password: String, status: (Int) -> Unit, state: Int) {
+    fun connectToWifi(
+        ssid: String,
+        password: String,
+        onResult: (String?) -> Unit
+    ) {
 
         val wifiNetworkSpecifier = WifiNetworkSpecifier.Builder()
             .setSsid(ssid)
@@ -162,35 +165,35 @@ class MainActivity : ComponentActivity() {
                     super.onAvailable(network)
                     connectivityManager.bindProcessToNetwork(network)
                     Log.d("WifiConnection", "Connected to $ssid")
-                    connectionSuccessful(ssid = ssid, status = status, state = state)
+                    connectionSuccessful(ssid = ssid, onResult)
 
                 }
 
                 override fun onUnavailable() {
                     super.onUnavailable()
                     Log.d("WifiConnection", "Connection to $ssid failed")
-                    connectionFailed(ssid = ssid, status = status, state = state)
+                    connectionFailed(ssid = ssid, onResult)
                 }
             })
-
     }
 
-    fun connectionSuccessful(ssid: String, status: (Int) -> Unit, state: Int) {
+    fun connectionSuccessful(ssid: String, onResult: (String?) -> Unit) {
         Toast.makeText(
             this,
             "Connected to Wifi $ssid",
             Toast.LENGTH_SHORT
         ).show()
-        status(state + 2)
+        onResult("Success")
+
     }
 
-    fun connectionFailed(ssid: String, status: (Int) -> Unit, state: Int) {
+    fun connectionFailed(ssid: String, onResult: (String?) -> Unit) {
         Toast.makeText(
             this,
             "Connection to WiFi failed, please retry $ssid",
             Toast.LENGTH_LONG
         ).show()
-        status(state + 1)
+        onResult("Failure")
     }
     @Composable
     fun DataCycle() {
