@@ -1,19 +1,14 @@
 package com.example.smartplugconfig
 
 //noinspection UsingMaterialAndMaterial3Libraries
-import android.Manifest
 import android.annotation.SuppressLint
-import android.content.Context
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import android.net.NetworkRequest
 import android.net.Uri
-import android.net.wifi.WifiManager
 import android.net.wifi.WifiNetworkSpecifier
 import android.os.Bundle
-import android.os.PowerManager
 import android.provider.Settings
 import android.util.Log
 import android.widget.Toast
@@ -27,25 +22,17 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.snapshots.SnapshotStateList
-import androidx.compose.ui.platform.LocalContext
-import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.smartplugconfig.WifiManagerProvider.connectivityManager
 import com.example.smartplugconfig.ui.theme.SmartPlugConfigTheme
 import getPlugMacAddress
 
 class MainActivity : ComponentActivity() {
 
-    private val requiredPermissions = arrayOf(
-        // Any required permissions
-        Manifest.permission.CHANGE_WIFI_STATE,
-        Manifest.permission.ACCESS_FINE_LOCATION,
-        Manifest.permission.ACCESS_WIFI_STATE,
-    )
-    lateinit var wifiManager: WifiManager
+
     var mifiNetworks = mutableStateListOf<String>()
     var plugWifiNetworks = mutableStateListOf<String>()
-    lateinit var connectivityManager: ConnectivityManager
-
+    private lateinit var appInitialisation: AppInitialisation
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -59,36 +46,11 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+
     private fun initialisation() {
-        wifiManagerInitialisation()
-        checkAndRequestPermissions()
-
-    }
-
-    private fun wifiManagerInitialisation() {
-        wifiManager = applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
-        connectivityManager = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
-    }
-
-    @SuppressLint("BatteryLife")
-    private fun checkAndRequestPermissions() {
-        val permissionsNeeded = requiredPermissions.filter {
-            ContextCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED
-        }
-        val powerManager = getSystemService(POWER_SERVICE) as PowerManager
-        if (!powerManager.isIgnoringBatteryOptimizations(packageName)) {
-            val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
-                data = Uri.parse("package:$packageName")
-            }
-            startActivity(intent)
-        }
-
-        if (permissionsNeeded.isNotEmpty()) {
-            requestPermissionsLauncher.launch(permissionsNeeded.toTypedArray())
-        } else {
-            Toast.makeText(this, "All permissions already granted!", Toast.LENGTH_SHORT).show()
-            // Return back to code
-        }
+        appInitialisation = AppInitialisation(applicationContext)
+        appInitialisation.initialise()
+        handlePermissionsAndBatteryOptimization()
     }
 
     // Establishes all necessary permissions for a wifi scan
@@ -107,6 +69,20 @@ class MainActivity : ComponentActivity() {
                 ).show()
             }
         }
+
+    private fun handlePermissionsAndBatteryOptimization() {
+        val permissionsToRequest = appInitialisation.getPermissionsToRequest()
+        if (permissionsToRequest.isNotEmpty()) {
+            requestPermissionsLauncher.launch(permissionsToRequest)
+        }
+
+        if (appInitialisation.needsBatteryOptimizationRequest()) {
+            val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
+                data = Uri.parse("package:${applicationContext.packageName}")
+            }
+            startActivity(intent)
+        }
+    }
 
     // Connect to open wifi (no password) temporary
     fun connectToOpenWifi(ssid: String, onResult: (String?) -> Unit) {
@@ -141,6 +117,7 @@ class MainActivity : ComponentActivity() {
     }
 
     // Connect to normal wifi
+
     @SuppressLint("ServiceCast")
     fun connectToWifi(
         ssid: String,
@@ -208,7 +185,6 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun SmartPlugConfigApp(viewModel: MainViewModel = viewModel(), activity: MainActivity, plugWifiNetworks: SnapshotStateList<String>) {
     val currentTextOutput by remember { mutableStateOf("output") }
-    val context = LocalContext.current
 
     ButtonsWithTextOutput(
         textToDisplay = currentTextOutput,

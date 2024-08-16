@@ -13,6 +13,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
+import com.example.smartplugconfig.WifiManagerProvider.wifiManager
 
 // Adds a button to allow refresh of networks if it doesn't appear
 @Composable
@@ -70,7 +71,7 @@ fun RefreshMifiButton(activity: MainActivity) {
 }
 
 @Composable
-fun MainActivity.DisplayMifiNetworks(onResult: (String?) -> Unit,mifiNetwork: (String) -> Unit){
+fun MainActivity.DisplayMifiNetworks(onResult: (String?) -> Unit, mifiNetwork: (String) -> Unit){
     Log.d("hi again", "It should be scanning now?")
 
     // For each network add a button to connect
