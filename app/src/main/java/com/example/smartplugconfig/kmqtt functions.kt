@@ -56,7 +56,7 @@ fun sendMQTTmessage(command : String, payload : String? = "") {
     }
 }
 
-private var powerReadingCallback: PowerReadingCallback? = null
+var powerReadingCallback: PowerReadingCallback? = null
 
 @ExperimentalUnsignedTypes
 fun setupMqttBroker(context: Context){

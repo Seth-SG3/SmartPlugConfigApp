@@ -15,7 +15,6 @@ import android.net.NetworkRequest
 import android.net.wifi.WifiNetworkSpecifier
 import android.os.Build
 import android.os.Bundle
-import android.os.Handler
 import android.os.IBinder
 import android.os.PowerManager
 import android.util.Log
@@ -51,6 +50,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.withContext
 import restartMiFiDongle
 import java.io.File
 import java.io.FileOutputStream
@@ -59,7 +59,6 @@ import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import java.util.Calendar
 import kotlin.coroutines.resume
-import kotlinx.coroutines.withContext
 
 class PowerReadingService : Service() {
 
@@ -70,11 +69,11 @@ class PowerReadingService : Service() {
     override fun onCreate() {   // Triggered once on class creation
         super.onCreate()
         startForegroundService()
-        setupMqttBroker(applicationContext)
-        checkAndEnableHotspot(applicationContext,viewModel)
         acquireWakeLock()
         clearFile()
         getPhoneMacAddress()
+        setupMqttBroker(applicationContext)
+        checkAndEnableHotspot(applicationContext,viewModel)
     }
     private var counter by mutableIntStateOf(1)
     private val viewModel = MainViewModel.getInstance()
@@ -197,7 +196,10 @@ class PowerReadingService : Service() {
         connectivityManagerProvider : ConnectivityManagerProvider
     ): String {
         return suspendCancellableCoroutine { cont ->
-            viewModel.getPowerReading { powerReading -> // Gets the current power
+            viewModel.getPowerReading(object : PowerReadingCallback {
+                override fun onPowerReadingReceived(power: String) {
+                }
+                }) { powerReading -> // Gets the current power
                 cont.resume(powerReading)
                 // Check network connection
                 if (powerReading.contains("Watts", ignoreCase = true)) {
@@ -217,6 +219,7 @@ class PowerReadingService : Service() {
                         writeToFile("$currentTime : Connection Failure\n", context = context)
                     }
                 }
+
             }
         }
 

@@ -5,6 +5,7 @@ import android.content.Context
 import android.net.wifi.WifiManager
 import android.os.AsyncTask
 import android.util.Log
+import com.example.smartplugconfig.WifiManagerProvider.wifiManager
 import java.io.IOException
 import java.net.Inet4Address
 import java.net.InetSocketAddress
