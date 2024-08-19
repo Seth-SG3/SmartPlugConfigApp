@@ -48,9 +48,15 @@ android {
         }
     }
 }
+configurations.all {
+    resolutionStrategy {
+        force ("org.jetbrains:annotations:23.0.0")
+        force ("androidx.compose.ui:ui-android:1.6.8")
+    }
+}
+
 
 dependencies {
-
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
@@ -60,6 +66,12 @@ dependencies {
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
     implementation(libs.androidx.media3.common)
+//    Libraries for MQTT client and broker
+    implementation("io.github.davidepianca98:kmqtt-common:0.4.8")
+    implementation("io.github.davidepianca98:kmqtt-client:0.4.8")
+    implementation("io.github.davidepianca98:kmqtt-common-jvm:0.4.8")
+    implementation("io.github.davidepianca98:kmqtt-broker-jvm:0.4.8")
+    implementation ("androidx.compose.material:material-icons-extended:1.0.5")
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

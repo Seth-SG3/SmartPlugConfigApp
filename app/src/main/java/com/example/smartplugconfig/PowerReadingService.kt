@@ -15,6 +15,7 @@ import android.net.NetworkRequest
 import android.net.wifi.WifiNetworkSpecifier
 import android.os.Build
 import android.os.Bundle
+import android.os.Handler
 import android.os.IBinder
 import android.os.PowerManager
 import android.util.Log
@@ -47,6 +48,7 @@ import getPhoneMacAddress
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import restartMiFiDongle
@@ -57,13 +59,19 @@ import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import java.util.Calendar
 import kotlin.coroutines.resume
+import kotlinx.coroutines.withContext
 
 class PowerReadingService : Service() {
+
+
+
 
     @RequiresApi(Build.VERSION_CODES.TIRAMISU)
     override fun onCreate() {   // Triggered once on class creation
         super.onCreate()
         startForegroundService()
+        setupMqttBroker(applicationContext)
+        checkAndEnableHotspot(applicationContext,viewModel)
         acquireWakeLock()
         clearFile()
         getPhoneMacAddress()
@@ -115,7 +123,6 @@ class PowerReadingService : Service() {
 
         val notification: Notification = Notification.Builder(this, channelId)
             .setContentTitle("Power Reading Service")
-            .setContentText("Doing something")
             .build()
 
         startForeground(1, notification)
@@ -130,11 +137,8 @@ class PowerReadingService : Service() {
 
     private fun acquireWakeLock() {
         val powerManager = getSystemService(Context.POWER_SERVICE) as PowerManager
-        wakeLock = powerManager.newWakeLock(
-            PowerManager.PARTIAL_WAKE_LOCK,
-            "PowerReadingService::WakeLock"
-        )
-        wakeLock.acquire(10*60*1000L /*10 minutes*/)
+        wakeLock = powerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "PowerReadingService::WakeLock")
+        wakeLock.acquire()
     }
 
     private fun releaseWakeLock() {
@@ -143,6 +147,20 @@ class PowerReadingService : Service() {
         }
     }
 
+    @RequiresApi(Build.VERSION_CODES.TIRAMISU)
+    private fun checkAndEnableHotspot(context: Context, viewModel: MainViewModel) {
+        CoroutineScope(Dispatchers.Main).launch {
+            withContext(Dispatchers.IO) {
+                while (true) {
+                    if (!viewModel.isLocalOnlyHotspotEnabled()) {
+                        Log.d("Hotspot", "Hotspot is off, turning it on...")
+                        viewModel.turnOnHotspot(context)
+                    }
+                    delay(60000) // Check every minute
+                }
+            }
+        }
+    }
 
     private fun scheduleAlarm() {
         val alarmManager = getSystemService(Context.ALARM_SERVICE) as AlarmManager

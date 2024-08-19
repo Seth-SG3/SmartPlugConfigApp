@@ -1,10 +1,14 @@
 package com.example.smartplugconfig
 
 import android.annotation.SuppressLint
+import android.content.Context
+import android.net.wifi.WifiManager
 import android.os.AsyncTask
 import android.util.Log
 import java.io.IOException
+import java.net.Inet4Address
 import java.net.InetSocketAddress
+import java.net.NetworkInterface
 import java.net.Socket
 
 // code from facto, class used in ip scan functionality
@@ -13,6 +17,7 @@ class DeviceScanner {
     private var scanTask: ScanTask? = null
 
     fun scanDevices(callback: ScanCallback?) {
+
         if (scanTask == null || scanTask?.status == AsyncTask.Status.FINISHED) {
             scanTask = ScanTask(callback)
             scanTask?.execute()
@@ -25,8 +30,12 @@ class DeviceScanner {
         @Deprecated("Deprecated in Java")
         override fun doInBackground(vararg params: Void?): List<String> {
             val deviceList = mutableListOf<String>()
+            val dhcpInfo = wifiManager.dhcpInfo
 
-            Log.d("DeviceScanner", "Starting scan in range 192.168.y.z")
+            // Get the device's IP address
+            val deviceIpAddress = getDeviceIpAddress() ?: return emptyList()
+            val thirdOctet = deviceIpAddress.split(".")[2]
+
 
             // Scan the range 192.168.y.z where y and z vary from 0 to 255
             for (z in 2..254) { // Skipping 0 and 255 for z as they are typically not used for hosts
@@ -40,9 +49,7 @@ class DeviceScanner {
 
                 try {
                     val socket = Socket()
-                    socket.connect(InetSocketAddress(hostAddress, 80),
-                        80
-                    ) // Increased timeout to 20ms too little think 40ms is best
+                    socket.connect(InetSocketAddress(hostAddress, 80), 100) // reduced from 200, seems to work fine
                     deviceList.add(hostAddress)
                     socket.close()
 
@@ -66,6 +73,24 @@ class DeviceScanner {
             callback?.onScanCompleted(result)
         }
 
+        private fun getDeviceIpAddress(): String? {
+            try {
+                val interfaces = NetworkInterface.getNetworkInterfaces()
+                while (interfaces.hasMoreElements()) {
+                    val networkInterface = interfaces.nextElement()
+                    val addresses = networkInterface.inetAddresses
+                    while (addresses.hasMoreElements()) {
+                        val address = addresses.nextElement()
+                        if (!address.isLoopbackAddress && address is Inet4Address) {
+                            return address.hostAddress
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e("DeviceScanner", "Failed to get device IP address: ${e.message}")
+            }
+            return null
+        }
 
     @Deprecated("Deprecated in Java")
     override fun onCancelled() {
