@@ -216,8 +216,8 @@ class PowerReadingService : Service() {
     }
 
     //TODO: Implement this as well as sorting out UI for this setting
-    fun readFromFile(context: MainActivity): String {
-        val file = File(context.filesDir, "power_records.txt")
+    private fun readFromFile(): String {
+        val file = File(applicationContext.filesDir, "power_records.txt")
         return if (file.exists()) {
             file.readText()
         } else {
@@ -313,6 +313,15 @@ class PowerReadingService : Service() {
                     Text("Restart Mi-Fi", color = Color.White)
                 }
                 Spacer(modifier = Modifier.height(20.dp))
+                Button(
+                    onClick = {
+                        readFromFile()
+
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color.Blue) // Set button color
+                ) {
+                    Text("Show power values", color = Color.White)
+                }
 
             }
         }

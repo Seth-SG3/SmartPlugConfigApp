@@ -33,7 +33,7 @@ fun MainActivity.DisplayPlugNetworks(activity: MainActivity, plugWifiNetworks: L
     plugWifiNetworks .forEach { ssid ->
         Button(onClick = {
             if(wifiManager.isWifiEnabled){
-                activity.connectToOpenWifi(ssid, onResult = onResult)
+                WifiConnector.connectToOpenWifi(ssid, onResult = onResult)
                 Log.d("Initialise", "WiFi is turned on, connecting to plug")
             }else{
                 Toast.makeText(

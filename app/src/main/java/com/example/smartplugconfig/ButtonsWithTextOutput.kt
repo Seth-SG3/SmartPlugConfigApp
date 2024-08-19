@@ -42,6 +42,7 @@ fun ButtonsWithTextOutput(
     val ipsosGreen = Color(0xFF00B140) // Ipsos Green color
     var isScanning by remember { mutableStateOf(false) }
     var loadingText by remember { mutableStateOf("Scanning") }
+
     // LaunchedEffect to animate the loading text
     LaunchedEffect(isScanning) {
         while (isScanning) {
@@ -179,7 +180,7 @@ fun ButtonsWithTextOutput(
                 fontWeight = FontWeight.Bold, // Make text bold
                 color = Color.Black // Text color
             )
-            activity.connectToWifi(
+            WifiConnector.connectToWifi(
                 ssid = mifiSsid,
                 password = "1234567890",
             ) { result ->
