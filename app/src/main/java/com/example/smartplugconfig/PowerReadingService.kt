@@ -43,6 +43,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import com.example.smartplugconfig.WifiManagerProvider.connectivityManager
 import getPhoneMacAddress
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -193,7 +194,6 @@ class PowerReadingService : Service() {
         password: String,
         currentTime: String,
         context: Context,
-        connectivityManagerProvider : ConnectivityManagerProvider
     ): String {
         return suspendCancellableCoroutine { cont ->
             viewModel.getPowerReading(object : PowerReadingCallback {
@@ -214,7 +214,6 @@ class PowerReadingService : Service() {
                         connectToWifi(
                             ssid = ssid,
                             password = password,
-                            connectivityManagerProvider = connectivityManagerProvider
                         ) // If connection fails it reconnects
                         writeToFile("$currentTime : Connection Failure\n", context = context)
                     }
@@ -260,9 +259,8 @@ class PowerReadingService : Service() {
 
     // Connect to normal wifi
     @SuppressLint("ServiceCast")
-    fun connectToWifi(ssid: String, password: String, connectivityManagerProvider : ConnectivityManagerProvider) {
+    fun connectToWifi(ssid: String, password: String) {
 
-        val connectivityManager = connectivityManagerProvider.getConnectivityManager()
 
         val wifiNetworkSpecifier = WifiNetworkSpecifier.Builder()
             .setSsid(ssid)
@@ -294,7 +292,7 @@ class PowerReadingService : Service() {
 
     @SuppressLint("CoroutineCreationDuringComposition")
     @Composable
-    fun DataCycleView(connectivityManagerProvider : ConnectivityManagerProvider) {
+    fun DataCycleView() {
         var power by remember { mutableStateOf("Initialising") }
         val context = LocalContext.current
         Box(
@@ -317,7 +315,7 @@ class PowerReadingService : Service() {
                                 "1234567890",
                                 getCurrentTime(),
                                 context = context,
-                                connectivityManagerProvider
+
                             )
                     }
                 }
@@ -350,15 +348,13 @@ class PowerReadingService : Service() {
 }
 
 class DataCycleActivity : ComponentActivity() {
-    private lateinit var connectivityManagerProvider: ConnectivityManagerProvider
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        connectivityManagerProvider = ConnectivityManagerProvider(applicationContext)
 
         super.onCreate(savedInstanceState)
         setContent {
             val service = PowerReadingService()
-            service.DataCycleView(connectivityManagerProvider)
+            service.DataCycleView()
         }
     }
 }

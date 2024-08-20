@@ -20,7 +20,7 @@ import java.lang.ref.WeakReference
 object WifiButtons {
 
     @Composable
-    fun ConnectToPlugWifi(activity: WeakReference<MainActivity>, plugWifiNetworks: SnapshotStateList<String>, onResult: (String?) -> Unit) {
+    fun ChoosePlugWifi(activity: WeakReference<MainActivity>, plugWifiNetworks: SnapshotStateList<String>, onResult: (String?) -> Unit) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
@@ -45,7 +45,7 @@ object WifiButtons {
 
         ) {
             RefreshWifiButton(activity = activity)
-            activity.DisplayMifiNetworks(onResult,mifiNetwork = mifiNetwork)
+            activity.get()?.DisplayMifiNetworks(onResult,mifiNetwork = mifiNetwork)
             ReturnWifiButton(onResult)
         }
     }
@@ -90,7 +90,7 @@ object WifiButtons {
     @Composable
     fun RefreshWifiButton(activity: WeakReference<MainActivity>) {
         Button(onClick = {
-            activity.updateWifiScan()
+            activity.get()?.updateWifiScan()
         }, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0033A0))) {
             Text("Refresh Networks", color = Color.White)
         }

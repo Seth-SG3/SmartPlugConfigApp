@@ -93,7 +93,6 @@ fun ButtonsWithTextOutput(
                 Button(
                     onClick = {
                         Log.d("hi - should be 1", status.toString())
-                        activity.updateWifiScan()
                         status = CONNECT_TO_PLUG_WIFI
                         Log.d("bye - should be 2", status.toString())
                     },
@@ -149,7 +148,7 @@ fun ButtonsWithTextOutput(
 
         CONNECT_TO_PLUG_WIFI -> {
             Log.d("Status", "Status = $status")      // Allow connections to the plug wifi
-            WifiButtons.ConnectToPlugWifi(
+            WifiButtons.ChoosePlugWifi(
                 activity = activity,
                 plugWifiNetworks = plugWifiNetworks,
             ) { result ->
@@ -289,10 +288,7 @@ fun ButtonsWithTextOutput(
 
         START_DATA_CYCLING -> {
             Log.d("Status", "Status = $status")
-
-
-            activity.DataCycle()
-
+            activity.get()?.DataCycle()
         }
 
         50 -> {
@@ -316,7 +312,7 @@ fun ButtonsWithTextOutput(
 
         51 -> {
             Log.d("Status", "Status = $status")      // Allow connections to the plug wifi
-            WifiButtons.ConnectToPlugWifi(
+            WifiButtons.ChoosePlugWifi(
                 activity = activity,
                 plugWifiNetworks = plugWifiNetworks,
             ) { result ->
@@ -504,7 +500,7 @@ fun HotspotSetupView(
         )
     }
     if (connectToPlugWifi) {
-        WifiButtons.ConnectToPlugWifi(
+        WifiButtons.ChoosePlugWifi(
             activity = activity,
             plugWifiNetworks = plugWifiNetworks,
         ) { result ->
