@@ -1,3 +1,5 @@
+package com.example.smartplugconfig.data
+
 import android.util.Log
 import com.google.gson.Gson
 import okhttp3.Call
@@ -13,24 +15,17 @@ import java.io.IOException
 import java.net.HttpURLConnection
 import java.net.URL
 
-
 fun restartMiFiDongle() {
     val client = OkHttpClient()
 
-    // Replace with actual URL and credentials
-    val ajaxUrl = "http://192.168.100.1/ajax"
-
-
     // Prepare the JSON payload for restart request
-
-
     val jsonPayload = Gson().toJson(mapOf("funcNo" to 1013))
     val mediaType = "application/json; charset=utf-8".toMediaType()
     val requestBody = jsonPayload.toRequestBody(mediaType)
 
     // Create the restart request
     val restartRequestBuilder = Request.Builder()
-        .url(ajaxUrl)
+        .url(AJAX_URL)
         .post(requestBody)
         .header("Content-Type", "application/json")
 
@@ -56,15 +51,13 @@ fun restartMiFiDongle() {
     })
 }
 
-
 lateinit var phoneMacAddress: String
 lateinit var plugMacAddress: String
 fun getPlugMacAddress(){
 
-    val urlString = "http://192.168.4.1/cm?cmnd=STATUS%205"
      try {
-         Log.d("getPlugMAC", "Attempting to send request to $urlString")
-         val url = URL(urlString)
+         Log.d("getPlugMAC", "Attempting to send request")
+         val url = URL(PLUG_MAC_URL)
          with(url.openConnection() as HttpURLConnection) {
              requestMethod = "GET"
              Log.d("getPlugMAC", "Request method set to $requestMethod")
@@ -99,10 +92,6 @@ fun getPhoneMacAddress(){
 
     val client = OkHttpClient()
 
-    // Replace with actual URL and credentials
-    val ajaxUrl = "http://192.168.100.1/ajax"
-
-
     // Prepare the JSON payload for restart request
 
 
@@ -112,7 +101,7 @@ fun getPhoneMacAddress(){
 
     // Create the restart request
     val requestBuilder = Request.Builder()
-        .url(ajaxUrl)
+        .url(AJAX_URL)
         .post(requestBody)
         .header("Content-Type", "application/json")
 
@@ -209,16 +198,7 @@ fun whitelist(){
 
 }
 
-/*
-
-Send request to mifi to whitelist
-Send other whitelist request
-
-Format of request is
-    {"funcNo":1054,"id":1,"mac":"34:98:7a:d5:f4:df"}:
-*/
-
-fun sendMiFiRequest(jsonPayload: String, url: String = "http://192.168.100.1/ajax"){
+fun sendMiFiRequest(jsonPayload: String){
 
     val mediaType = "application/json; charset=utf-8".toMediaType()
     val requestBody = jsonPayload.toRequestBody(mediaType)
@@ -227,7 +207,7 @@ fun sendMiFiRequest(jsonPayload: String, url: String = "http://192.168.100.1/aja
 
     // Create the request
     val sendMacRequestBuilder = Request.Builder()
-        .url(url)
+        .url(AJAX_URL)
         .post(requestBody)
         .header("Content-Type", "application/json")
 

@@ -1,11 +1,9 @@
-package com.example.smartplugconfig
+package com.example.smartplugconfig.data
 
 import android.annotation.SuppressLint
-import android.content.Context
-import android.net.wifi.WifiManager
 import android.os.AsyncTask
 import android.util.Log
-import com.example.smartplugconfig.WifiManagerProvider.wifiManager
+import com.example.smartplugconfig.data.WifiManagerProvider.wifiManager
 import java.io.IOException
 import java.net.Inet4Address
 import java.net.InetSocketAddress
@@ -40,7 +38,7 @@ class DeviceScanner {
 
             // Scan the range 192.168.y.z where y and z vary from 0 to 255
             for (z in 2..254) { // Skipping 0 and 255 for z as they are typically not used for hosts
-                val hostAddress = "192.168.100.$z"
+                val hostAddress = "192.168.$thirdOctet.$z"
                 if (isCancelled) {
                     Log.d("DeviceScanner", "Scan cancelled before scanning $z")
                     return deviceList

@@ -1,4 +1,4 @@
-package com.example.smartplugconfig
+package com.example.smartplugconfig.data
 
 import android.annotation.SuppressLint
 import android.net.ConnectivityManager
@@ -7,8 +7,8 @@ import android.net.NetworkRequest
 import android.net.wifi.WifiNetworkSpecifier
 import android.util.Log
 import android.widget.Toast
-import com.example.smartplugconfig.WifiManagerProvider.connectivityManager
-import getPlugMacAddress
+import com.example.smartplugconfig.AppContext
+import com.example.smartplugconfig.data.WifiManagerProvider.connectivityManager
 
 object WifiConnector {
 

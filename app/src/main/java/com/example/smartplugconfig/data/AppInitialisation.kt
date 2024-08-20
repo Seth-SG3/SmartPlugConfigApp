@@ -1,4 +1,4 @@
-package com.example.smartplugconfig
+package com.example.smartplugconfig.data
 
 import android.Manifest
 import android.content.Context

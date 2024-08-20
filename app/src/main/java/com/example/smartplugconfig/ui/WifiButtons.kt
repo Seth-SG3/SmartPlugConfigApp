@@ -1,4 +1,4 @@
-package com.example.smartplugconfig
+package com.example.smartplugconfig.ui
 
 import android.util.Log
 import android.widget.Toast
@@ -14,7 +14,12 @@ import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import com.example.smartplugconfig.WifiManagerProvider.wifiManager
+import com.example.smartplugconfig.AppContext
+import com.example.smartplugconfig.DisplayMifiNetworks
+import com.example.smartplugconfig.MainActivity
+import com.example.smartplugconfig.data.WifiConnector
+import com.example.smartplugconfig.data.WifiManagerProvider.wifiManager
+import com.example.smartplugconfig.updateWifiScan
 import java.lang.ref.WeakReference
 
 object WifiButtons {

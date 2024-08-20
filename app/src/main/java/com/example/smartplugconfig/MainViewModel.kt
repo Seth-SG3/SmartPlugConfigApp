@@ -9,6 +9,9 @@ import androidx.annotation.RequiresApi
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.smartplugconfig.data.DeviceScanner
+import com.example.smartplugconfig.data.PowerService
+import com.example.smartplugconfig.data.createRetrofitInstance
 import com.example.smartplugconfig.hotspot.UnhiddenSoftApConfigurationBuilder
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -25,18 +28,8 @@ class MainViewModel : ViewModel() {
     private val ipAddress = mutableStateOf<String?>(null)
     private val _ipAddressMQTT = mutableStateOf<String?>(null)
 
-
     fun setIpAddress(ip: String) {
         ipAddress.value = ip
-    }
-
-    companion object {
-        @Volatile private var instance: MainViewModel? = null
-
-        fun getInstance(): MainViewModel =
-            instance ?: synchronized(this) {
-                instance ?: MainViewModel().also { instance = it }
-            }
     }
 
     fun scanDevices(onScanCompleted: (String?) -> Unit) {
@@ -221,41 +214,22 @@ class MainViewModel : ViewModel() {
 
         val ip = ipAddress.value
 
-        val urlString = "http://${ip}/cm?cmnd=Status%208"
-        return try {
-            Log.d("getPowerReading", "Attempting to send request to $urlString")
-            val url = URL(urlString)
-            withContext(Dispatchers.IO) {
-                with(url.openConnection() as HttpURLConnection) {
-                    requestMethod = "GET"
-                    Log.d("getPowerReading", "Request method set to $requestMethod")
+        val response = ip?.let { getPowerRetro(it) }
+        // Use the result here
 
-                    val responseCode = responseCode
-                    Log.d("getPowerReading", "Response code: $responseCode")
-                    if (responseCode == HttpURLConnection.HTTP_OK) {
-                        val response = inputStream.bufferedReader().use(BufferedReader::readText)
-                        Log.d("getPowerReading", "Response: $response")
 
-                        // Parse the JSON response
-                        val jsonObject = JSONObject(response)
-                        val statusSNS = jsonObject.getJSONObject("StatusSNS")
-                        val energy = statusSNS.getJSONObject("ENERGY")
-                        val power = energy.getInt("Power")
+        // Parse the JSON response
+        val jsonObject = JSONObject(response)
+        val statusSNS = jsonObject.getJSONObject("StatusSNS")
+        val energy = statusSNS.getJSONObject("ENERGY")
+        val power = energy.getInt("Power")
 
-                        // Return the formatted string
-                        "Power: $power Watts"
-                    } else {
-                        "HTTP error code: $responseCode"
-                    }
-                }
-            }
-        } catch (e: Exception) {
-            val errorMessage = "Error: ${e.localizedMessage ?: "An unknown error occurred"}"
-            Log.e("getPowerReading", errorMessage, e)
+        // Return the formatted string
+        return "Power: $power Watts"
 
-            return "ConnectionFailure"
-        }
     }
+
+
 
     //is only actually checking if device has ip but wifi should never be on so i think is ok for now at least for soak testing
     fun isLocalOnlyHotspotEnabled(): Boolean {
@@ -289,4 +263,29 @@ class MainViewModel : ViewModel() {
 
     }
 
+
+
+    private fun getPowerRetro(ipAddress:String) :String {
+        val retrofit = createRetrofitInstance(ipAddress)
+
+        val retrofitService =
+            retrofit.create(PowerService::class.java)
+        return try {
+            val listResult = retrofitService.getPower()
+            Log.d("List", listResult)
+            listResult // Return the result here
+        } catch (e: Exception) {
+            Log.e("Error", "Failed to fetch power: ${e.message}")
+            "Error fetching power"
+        }
+    }
+
+    companion object {
+        @Volatile private var instance: MainViewModel? = null
+
+        fun getInstance(): MainViewModel =
+            instance ?: synchronized(this) {
+                instance ?: MainViewModel().also { instance = it }
+            }
+    }
 }

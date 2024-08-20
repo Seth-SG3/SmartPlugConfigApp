@@ -43,8 +43,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import com.example.smartplugconfig.WifiManagerProvider.connectivityManager
-import getPhoneMacAddress
+import com.example.smartplugconfig.data.FileHandler
+import com.example.smartplugconfig.data.WifiManagerProvider.connectivityManager
+import com.example.smartplugconfig.data.getPhoneMacAddress
+import com.example.smartplugconfig.data.restartMiFiDongle
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -52,10 +54,6 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
-import restartMiFiDongle
-import java.io.File
-import java.io.FileOutputStream
-import java.io.IOException
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import java.util.Calendar
@@ -71,7 +69,8 @@ class PowerReadingService : Service() {
         super.onCreate()
         startForegroundService()
         acquireWakeLock()
-        clearFile()
+        fileHandler = FileHandler(applicationContext)
+        fileHandler.clearFile()
         getPhoneMacAddress()
         setupMqttBroker(applicationContext)
         checkAndEnableHotspot(applicationContext,viewModel)
@@ -81,6 +80,8 @@ class PowerReadingService : Service() {
     private lateinit var wakeLock: PowerManager.WakeLock
     private val serviceJob = Job()
     private val serviceScope = CoroutineScope(Dispatchers.Main + serviceJob)
+    private lateinit var fileHandler: FileHandler
+
 
 
     override fun onDestroy() {
@@ -206,7 +207,7 @@ class PowerReadingService : Service() {
                     // Write power to file
                     Log.d("PowerReading", "Power value is suitable")
                     val record = "$currentTime - Power: $powerReading\n"
-                    writeToFile(record, context = context)
+                    fileHandler.writeToFile(record, context = context)
                 } else {
                     Log.d("PowerReading", "Connection has failed")
 
@@ -215,48 +216,12 @@ class PowerReadingService : Service() {
                             ssid = ssid,
                             password = password,
                         ) // If connection fails it reconnects
-                        writeToFile("$currentTime : Connection Failure\n", context = context)
+                    fileHandler.writeToFile("$currentTime : Connection Failure\n", context = context)
                     }
                 }
 
             }
         }
-
-
-    // Writes to power records text file
-    private fun writeToFile(data: String, context: Context) {
-        val file = File(context.filesDir, "power_records.txt")
-        try {
-            FileOutputStream(file, true).use { output ->
-                output.write(data.toByteArray())
-            }
-        } catch (e: IOException) {
-            e.printStackTrace()
-        }
-    }
-
-    //TODO: Implement this as well as sorting out UI for this setting
-    private fun readFromFile(): String {
-        val file = File(applicationContext.filesDir, "power_records.txt")
-        return if (file.exists()) {
-            file.readText()
-        } else {
-            "File not found"
-        }
-    }
-
-    //Clears the file on restart
-    private fun clearFile() {
-        val file = File(applicationContext.filesDir, "power_records.txt")
-        try {
-            FileOutputStream(file).use { output ->
-                output.write("".toByteArray())
-            }
-        } catch (e: IOException) {
-            e.printStackTrace()
-        }
-    }
-
     // Connect to normal wifi
     @SuppressLint("ServiceCast")
     fun connectToWifi(ssid: String, password: String) {
@@ -334,7 +299,7 @@ class PowerReadingService : Service() {
                 Spacer(modifier = Modifier.height(20.dp))
                 Button(
                     onClick = {
-                        readFromFile()
+                        fileHandler.readFromFile()
 
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = Color.Blue) // Set button color

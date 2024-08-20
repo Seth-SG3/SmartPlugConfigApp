@@ -1,4 +1,4 @@
-package com.example.smartplugconfig
+package com.example.smartplugconfig.ui
 
 import android.content.Context
 import android.os.Build
@@ -33,6 +33,24 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.smartplugconfig.AppContext
+import com.example.smartplugconfig.data.CHOOSE_MIFI_NETWORK
+import com.example.smartplugconfig.data.CONNECT_CONSOLE_TO_MIFI
+import com.example.smartplugconfig.data.CONNECT_TO_PLUG_WIFI
+import com.example.smartplugconfig.data.DEFAULT_PAGE
+import com.example.smartplugconfig.data.HOTSPOT_PAGE
+import com.example.smartplugconfig.data.IP_SCANNING
+import com.example.smartplugconfig.data.MIFI_TRANSITION_STATE
+import com.example.smartplugconfig.MainActivity
+import com.example.smartplugconfig.MainViewModel
+import com.example.smartplugconfig.data.PLUG_WIFI_TRANSITION_STATE
+import com.example.smartplugconfig.data.PROCESS_UNSUCCESSFUL_SCAN
+import com.example.smartplugconfig.PowerReadingCallback
+import com.example.smartplugconfig.data.SEND_PLUG_MIFI_INFO
+import com.example.smartplugconfig.data.START_DATA_CYCLING
+import com.example.smartplugconfig.data.WifiConnector
+import com.example.smartplugconfig.sendMQTTmessage
+import com.example.smartplugconfig.setupMqttBroker
 import kotlinx.coroutines.delay
 import java.lang.ref.WeakReference
 
@@ -178,8 +196,7 @@ fun ButtonsWithTextOutput(
         CHOOSE_MIFI_NETWORK -> {
             Log.d("Status", "Status = $status")
             // Choose MiFi Network
-            WifiButtons.ChooseMifiNetwork(
-                activity = activity,
+            WifiButtons.ChooseMifiNetwork(activity = activity,
                 mifiNetwork = { mifiSsid = it }) { result ->
                 if (result != null) {
                     when (result) {
@@ -261,27 +278,33 @@ fun ButtonsWithTextOutput(
 
         IP_SCANNING -> {
             Log.d("Status", "Status = $status")
-
-            isScanning = true
-            viewModel.scanDevices { result ->
-                isScanning = false
-                if (result != null) {
-                    if (result != "No devices found") {
-                        result.let { ip -> viewModel.setIpAddress(ip) } // Set the IP address in the ViewModel.
-                        status = START_DATA_CYCLING
-                        scanCounter = 0
-                    } else {
-                        status = PROCESS_UNSUCCESSFUL_SCAN
+            if (!isScanning) {
+                isScanning = true
+                viewModel.scanDevices { result ->
+                    isScanning = false
+                    if (result != null) {
+                        if (result != "No devices found") {
+                            result.let { ip -> viewModel.setIpAddress(ip) } // Set the IP address in the ViewModel.
+                            status = START_DATA_CYCLING
+                            scanCounter = 0
+                        } else {
+                            status = PROCESS_UNSUCCESSFUL_SCAN
+                        }
                     }
                 }
+            } else {
+                Log.e("isScanning", "Scan already in progress")
             }
         }
+
 
         PROCESS_UNSUCCESSFUL_SCAN -> {
             Log.d("Status", "Status = $status")
             status = if (scanCounter < 3) {
+                scanCounter + 1
                 IP_SCANNING
             } else {
+
                 CONNECT_TO_PLUG_WIFI
             }
         }
@@ -291,12 +314,11 @@ fun ButtonsWithTextOutput(
             activity.get()?.DataCycle()
         }
 
-        50 -> {
+        HOTSPOT_PAGE -> {
             var currentTextOutput by remember { mutableStateOf("output") }
 
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                HotspotSetupView(
-                    textToDisplay = textToDisplay,
+                HotspotSetupView(textToDisplay = textToDisplay,
                     setCurrentTextOutput = { currentTextOutput = it },
                     viewModel = viewModel,
                     modifier = modifier,

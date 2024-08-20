@@ -71,7 +71,7 @@ dependencies {
     implementation("io.github.davidepianca98:kmqtt-client:0.4.8")
     implementation("io.github.davidepianca98:kmqtt-common-jvm:0.4.8")
     implementation("io.github.davidepianca98:kmqtt-broker-jvm:0.4.8")
-    implementation ("androidx.compose.material:material-icons-extended:1.0.5")
+    implementation ("androidx.compose.material:material-icons-extended:1.6.8")
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
@@ -85,5 +85,8 @@ dependencies {
     implementation (libs.okhttp)
     implementation(libs.okhttp.v493)
     implementation(libs.gson)
+    // Retrofit libraries
+    implementation(libs.retrofit)
+    implementation(libs.converter.scalars)
 
 }

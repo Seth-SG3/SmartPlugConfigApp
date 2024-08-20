@@ -13,10 +13,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
-import com.example.smartplugconfig.WifiManagerProvider.wifiManager
-import java.lang.ref.WeakReference
-
-
+import com.example.smartplugconfig.data.WifiManagerProvider.wifiManager
 
 
 @Composable

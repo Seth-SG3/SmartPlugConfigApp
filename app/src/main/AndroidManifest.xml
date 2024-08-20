@@ -55,7 +55,7 @@
             </intent-filter>
         </activity>
 
-
+        <activity android:name=".DataCycleActivity"> </activity>
         <service
             android:name=".PowerReadingService"
             android:enabled="true"
