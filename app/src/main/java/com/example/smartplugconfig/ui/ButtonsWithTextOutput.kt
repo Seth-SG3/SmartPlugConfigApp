@@ -285,8 +285,9 @@ fun ButtonsWithTextOutput(
                     if (result != null) {
                         if (result != "No devices found") {
                             result.let { ip -> viewModel.setIpAddress(ip) } // Set the IP address in the ViewModel.
-                            status = START_DATA_CYCLING
                             scanCounter = 0
+                            isScanning = false
+                            status = START_DATA_CYCLING
                         } else {
                             status = PROCESS_UNSUCCESSFUL_SCAN
                         }

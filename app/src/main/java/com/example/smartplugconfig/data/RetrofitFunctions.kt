@@ -5,6 +5,8 @@ import retrofit2.converter.scalars.ScalarsConverterFactory
 import retrofit2.http.GET
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.launch
+import retrofit2.Call
+import retrofit2.Response
 
 fun createRetrofitInstance(baseIpAddress: String): Retrofit {
     val baseUrl = "http://$baseIpAddress/"
@@ -16,7 +18,7 @@ fun createRetrofitInstance(baseIpAddress: String): Retrofit {
 interface PowerService {
 
     @GET("cm?cmnd=Status%208")
-    fun getPower(): String
+    suspend fun getPower(): Response<String>
 }
 
 

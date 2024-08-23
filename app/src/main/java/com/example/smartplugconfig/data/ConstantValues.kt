@@ -16,3 +16,10 @@ const val HOTSPOT_PAGE = 50
 
 const val AJAX_URL = "http://192.168.100.1/ajax"
 const val PLUG_MAC_URL = "http://192.168.4.1/cm?cmnd=STATUS%205"
+
+// 192.168.4.1 is the default for tasmota plug
+fun wifiConfigUrl (ssid: String, password: String):String{
+    return "http://192.168.4.1/cm?cmnd=Backlog%20SSID1%20${ssid}%3B%20Password1%20${password}%3B%20WifiConfig%205%3B%20restart%201"
+}
+
+

@@ -51,31 +51,6 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-
-
-    private fun scheduleAlarm() {
-        val alarmManager = getSystemService(Context.ALARM_SERVICE) as AlarmManager
-        val intent = Intent(this, PowerReadingService::class.java)
-        val pendingIntent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            PendingIntent.getService(this, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
-        } else {
-            PendingIntent.getService(this, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT)
-        }
-
-        // Set the alarm to start at approximately 00:00
-        val calendar = Calendar.getInstance().apply {
-            timeInMillis = System.currentTimeMillis()
-            set(Calendar.SECOND, 0)
-        }
-
-        alarmManager.setRepeating(
-            AlarmManager.RTC_WAKEUP,
-            calendar.timeInMillis,
-            AlarmManager.INTERVAL_FIFTEEN_MINUTES / 15, // Every minute
-            pendingIntent
-        )
-    }
-
     @RequiresApi(Build.VERSION_CODES.TIRAMISU)
     private fun initialisation() {
         appInitialisation = AppInitialisation(applicationContext)
@@ -125,7 +100,7 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun SmartPlugConfigApp(viewModel: MainViewModel = viewModel(), activity: WeakReference<MainActivity>, plugWifiNetworks: SnapshotStateList<String>) {
+fun SmartPlugConfigApp(viewModel: MainViewModel = MainViewModel.getInstance(), activity: WeakReference<MainActivity>, plugWifiNetworks: SnapshotStateList<String>) {
     val currentTextOutput by remember { mutableStateOf("output") }
 
     ButtonsWithTextOutput(

@@ -72,6 +72,7 @@ dependencies {
     implementation("io.github.davidepianca98:kmqtt-common-jvm:0.4.8")
     implementation("io.github.davidepianca98:kmqtt-broker-jvm:0.4.8")
     implementation ("androidx.compose.material:material-icons-extended:1.6.8")
+    implementation(libs.firebase.firestore.ktx)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
@@ -88,5 +89,12 @@ dependencies {
     // Retrofit libraries
     implementation(libs.retrofit)
     implementation(libs.converter.scalars)
-
+    implementation (libs.lifecycle.viewmodel.ktx)
+    implementation (libs.retrofit)
+    implementation (libs.converter.scalars)
+    implementation (libs.kotlinx.coroutines.core.v152)
+    implementation (libs.kotlinx.coroutines.android.v152)
 }
+
+
+

@@ -12,7 +12,9 @@ import androidx.lifecycle.viewModelScope
 import com.example.smartplugconfig.data.DeviceScanner
 import com.example.smartplugconfig.data.PowerService
 import com.example.smartplugconfig.data.createRetrofitInstance
+import com.example.smartplugconfig.data.wifiConfigUrl
 import com.example.smartplugconfig.hotspot.UnhiddenSoftApConfigurationBuilder
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -23,6 +25,8 @@ import java.net.Inet4Address
 import java.net.NetworkInterface
 import java.net.URL
 import java.util.concurrent.Executor
+import kotlin.coroutines.resume
+import kotlin.coroutines.suspendCoroutine
 
 class MainViewModel : ViewModel() {
     private val ipAddress = mutableStateOf<String?>(null)
@@ -30,6 +34,7 @@ class MainViewModel : ViewModel() {
 
     fun setIpAddress(ip: String) {
         ipAddress.value = ip
+        Log.d("setipaddress $this", ip)
     }
 
     fun scanDevices(onScanCompleted: (String?) -> Unit) {
@@ -73,10 +78,10 @@ class MainViewModel : ViewModel() {
 
     private suspend fun sendWifiConfigInternal(ssid: String, password: String): String {
         //uses default ip for tasmota plug wifi ap
-        val urlString = "http://192.168.4.1/cm?cmnd=Backlog%20SSID1%20${ssid}%3B%20Password1%20${password}%3B%20WifiConfig%205%3B%20restart%201"
+        val wifiConfigUrlString = wifiConfigUrl(ssid, password)
         return try {
-            Log.d("sendWifiConfig", "Attempting to send request to $urlString")
-            val url = URL(urlString)
+            Log.d("sendWifiConfig", "Attempting to send request to $wifiConfigUrlString")
+            val url = URL(wifiConfigUrlString)
             withContext(Dispatchers.IO) {
                 with(url.openConnection() as HttpURLConnection) {
                     requestMethod = "GET"
@@ -169,11 +174,11 @@ class MainViewModel : ViewModel() {
             Log.d("sendMQTTConfig", "device ip not found")
         }
 
-        val urlString =
+        val mqttUrlString =
             "http://${ip}/cm?cmnd=Backlog%20MqttHost%20$host%3B%20MqttUser%20Test1%3B%20MqttPassword%20Test2%3B%20Topic%20$topic%3B%20SetOption140%201%3B%20MqttRetry%2010%3B%20MqttWifiTimeout%2020000%3B%20TelePeriod%2060"
         return try {
-            Log.d("sendMQTTConfig", "Attempting to send request to $urlString")
-            val url = URL(urlString)
+            Log.d("sendMQTTConfig", "Attempting to send request to $mqttUrlString")
+            val url = URL(mqttUrlString)
             withContext(Dispatchers.IO) {
                 with(url.openConnection() as HttpURLConnection) {
                     requestMethod = "GET"
@@ -213,19 +218,27 @@ class MainViewModel : ViewModel() {
 
 
         val ip = ipAddress.value
-
-        val response = ip?.let { getPowerRetro(it) }
+        Log.d("ReadIpAddress $this", "ip address found as $ip")
+        val response = ip?.let { fetchPower(it) }
         // Use the result here
-
-
+        if (response != null) {
+            Log.d("Retrofit", "response = $response")
+        }else{
+            Log.d("Retrofit", "response = null")
+        }
+        if (response == null) {
+            Log.d("Response", "Response is null")
+            return "Error fetching power"
+        }else{
         // Parse the JSON response
-        val jsonObject = JSONObject(response)
-        val statusSNS = jsonObject.getJSONObject("StatusSNS")
-        val energy = statusSNS.getJSONObject("ENERGY")
-        val power = energy.getInt("Power")
+            val jsonObject = JSONObject(response)
+            val statusSNS = jsonObject.getJSONObject("StatusSNS")
+            val energy = statusSNS.getJSONObject("ENERGY")
+            val power = energy.getInt("Power")
+            // Return the formatted string
+            return "Power: $power Watts"
+        }
 
-        // Return the formatted string
-        return "Power: $power Watts"
 
     }
 
@@ -265,20 +278,35 @@ class MainViewModel : ViewModel() {
 
 
 
-    private fun getPowerRetro(ipAddress:String) :String {
+    private suspend fun getPowerRetro(ipAddress:String) :String {
         val retrofit = createRetrofitInstance(ipAddress)
 
-        val retrofitService =
-            retrofit.create(PowerService::class.java)
+        val retrofitService = retrofit.create(PowerService::class.java)
         return try {
-            val listResult = retrofitService.getPower()
-            Log.d("List", listResult)
-            listResult // Return the result here
-        } catch (e: Exception) {
+            val response = withContext(Dispatchers.IO) { retrofitService.getPower() }
+            if (response.isSuccessful) {
+                val listResult = response.body()
+                Log.d("List", listResult ?: "No result")
+                listResult ?: "No result" // Return the result here
+            } else {
+                Log.e("Error", "Failed to fetch power: ${response.errorBody()?.string()}")
+                "Error fetching power"
+            }
+        }catch (e: Exception) {
             Log.e("Error", "Failed to fetch power: ${e.message}")
             "Error fetching power"
         }
     }
+
+    suspend fun fetchPower(ipAddress: String): String {
+        return suspendCoroutine { continuation ->
+            CoroutineScope(Dispatchers.Main).launch {
+                val result = getPowerRetro(ipAddress)
+                continuation.resume(result)
+            }
+        }
+    }
+
 
     companion object {
         @Volatile private var instance: MainViewModel? = null

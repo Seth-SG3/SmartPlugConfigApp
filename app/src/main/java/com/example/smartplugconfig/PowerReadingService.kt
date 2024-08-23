@@ -1,5 +1,7 @@
 package com.example.smartplugconfig
 
+
+import kotlinx.coroutines.asCoroutineDispatcher
 import android.annotation.SuppressLint
 import android.app.AlarmManager
 import android.app.Notification
@@ -7,12 +9,15 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.content.ServiceConnection
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import android.net.NetworkRequest
 import android.net.wifi.WifiNetworkSpecifier
+import android.os.Binder
 import android.os.Build
 import android.os.Bundle
 import android.os.IBinder
@@ -47,6 +52,7 @@ import com.example.smartplugconfig.data.FileHandler
 import com.example.smartplugconfig.data.WifiManagerProvider.connectivityManager
 import com.example.smartplugconfig.data.getPhoneMacAddress
 import com.example.smartplugconfig.data.restartMiFiDongle
+import com.google.firebase.firestore.util.Executors
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -57,41 +63,47 @@ import kotlinx.coroutines.withContext
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import java.util.Calendar
+import java.util.concurrent.CountDownLatch
 import kotlin.coroutines.resume
 
 class PowerReadingService : Service() {
 
-
-
-
-    @RequiresApi(Build.VERSION_CODES.TIRAMISU)
-    override fun onCreate() {   // Triggered once on class creation
-        super.onCreate()
-        startForegroundService()
-        acquireWakeLock()
-        fileHandler = FileHandler(applicationContext)
-        fileHandler.clearFile()
-        getPhoneMacAddress()
-        setupMqttBroker(applicationContext)
-        checkAndEnableHotspot(applicationContext,viewModel)
-    }
     private var counter by mutableIntStateOf(1)
     private val viewModel = MainViewModel.getInstance()
     private lateinit var wakeLock: PowerManager.WakeLock
     private val serviceJob = Job()
     private val serviceScope = CoroutineScope(Dispatchers.Main + serviceJob)
     private lateinit var fileHandler: FileHandler
+    private val onCreateLatch = CountDownLatch(1)
+
+    @RequiresApi(Build.VERSION_CODES.TIRAMISU)
+    override fun onCreate() {   // Triggered once on class creation
+
+        super.onCreate()
+        acquireWakeLock()
+        fileHandlerInitialise()
+        fileHandler.clearFile()
 
 
+        getPhoneMacAddress()
+        setupMqttBroker(applicationContext)
+        checkAndEnableHotspot(applicationContext,viewModel)
+        startForegroundService()
+    }
 
     override fun onDestroy() {
         super.onDestroy()
         releaseWakeLock()
     }
 
+    private val binder = LocalBinder()
 
-    override fun onBind(intent: Intent?): IBinder? {
-        return null
+    inner class LocalBinder : Binder() {
+        fun getService(): PowerReadingService = this@PowerReadingService
+    }
+
+    override fun onBind(intent: Intent?): IBinder {
+        return binder
     }
 
     // Every time this is called
@@ -99,6 +111,7 @@ class PowerReadingService : Service() {
         counter += 1
         scheduleAlarm() // Set to restart after a minute
         Log.d("counter", counter.toString())
+        if(!::fileHandler.isInitialized) fileHandlerInitialise()
         if (counter % 1440 != 0) {
             val activityIntent = Intent(this, DataCycleActivity::class.java)
             activityIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
@@ -109,6 +122,13 @@ class PowerReadingService : Service() {
             Log.d("PowerReading", "Restarting MiFi device")
             return START_STICKY
         }
+
+    }
+
+    private fun fileHandlerInitialise() {
+        fileHandler = FileHandler(applicationContext)
+        onCreateLatch.countDown()
+        Log.d(this.toString(), "countdown")
     }
 
     @SuppressLint("ForegroundServiceType")
@@ -196,6 +216,11 @@ class PowerReadingService : Service() {
         currentTime: String,
         context: Context,
     ): String {
+        // Wait until initialization is complete
+
+        withContext(Dispatchers.IO) {
+            onCreateLatch.await()
+        }
         return suspendCancellableCoroutine { cont ->
             viewModel.getPowerReading(object : PowerReadingCallback {
                 override fun onPowerReadingReceived(power: String) {
@@ -207,6 +232,7 @@ class PowerReadingService : Service() {
                     // Write power to file
                     Log.d("PowerReading", "Power value is suitable")
                     val record = "$currentTime - Power: $powerReading\n"
+                    Log.d("PowerReading", record)
                     fileHandler.writeToFile(record, context = context)
                 } else {
                     Log.d("PowerReading", "Connection has failed")
@@ -314,12 +340,46 @@ class PowerReadingService : Service() {
 
 class DataCycleActivity : ComponentActivity() {
 
-    override fun onCreate(savedInstanceState: Bundle?) {
+    private var service: PowerReadingService? = null
+    private var bound by mutableStateOf(false)
 
+    private val connection = object : ServiceConnection {
+        override fun onServiceConnected(className: ComponentName, service: IBinder) {
+            val binder = service as PowerReadingService.LocalBinder
+            this@DataCycleActivity.service = binder.getService()
+            bound = true
+        }
+
+        override fun onServiceDisconnected(arg0: ComponentName) {
+            bound = false
+        }
+    }
+
+    override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        bindToService()
         setContent {
-            val service = PowerReadingService()
-            service.DataCycleView()
+            if (bound) {
+                service?.DataCycleView()
+            } else {
+                // Display a loading or placeholder UI while the service is binding
+                Text("Loading...")
+            }
+        }
+    }
+
+    private fun bindToService() {
+        Intent(this, PowerReadingService::class.java).also { intent ->
+            bindService(intent, connection, Context.BIND_AUTO_CREATE)
+        }
+    }
+
+    override fun onStop() {
+        super.onStop()
+        // Unbind from the service
+        if (bound) {
+            unbindService(connection)
+            bound = false
         }
     }
 }
