@@ -2,6 +2,7 @@ package com.example.smartplugconfig
 
 import android.annotation.SuppressLint
 import android.content.Context
+import android.net.MacAddress
 import android.net.wifi.SoftApConfiguration
 import android.net.wifi.WifiManager
 import android.util.Log
@@ -31,6 +32,49 @@ import kotlin.coroutines.suspendCoroutine
 class MainViewModel : ViewModel() {
     private val ipAddress = mutableStateOf<String?>(null)
     private val _ipAddressMQTT = mutableStateOf<String?>(null)
+    private var plugMacAddress = ""
+
+    fun findPlugMacAddress(onResult: (String) -> Unit) {
+        viewModelScope.launch {
+            val result = findPlugMacAddressInternal()
+            onResult(result)
+        }
+
+    }
+
+    private suspend fun findPlugMacAddressInternal():String{
+
+        val urlString =
+            "http://${ipAddress.value}/cm?cmnd=Status%205"
+        return try {
+            Log.d("MacAddress", "Attempting to send request to $urlString")
+            val url = URL(urlString)
+            withContext(Dispatchers.IO) {
+                with(url.openConnection() as HttpURLConnection) {
+                    requestMethod = "GET"
+                    Log.d("MacAddress", "Request method set to $requestMethod")
+
+                    val responseCode = responseCode
+                    Log.d("MacAddress", "Response code: $responseCode")
+                    if (responseCode == HttpURLConnection.HTTP_OK) {
+                        val response = inputStream.bufferedReader().use(BufferedReader::readText)
+                        Log.d("MacAddress", "Response: $response")
+                        val jsonObject = JSONObject(response)
+                        val statusNetObject = jsonObject.getJSONObject("StatusNET")
+                        plugMacAddress = statusNetObject.getString("Mac")
+                        statusNetObject.getString("Mac")
+
+                    } else {
+                        "HTTP error code: $responseCode"
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            val errorMessage = "Error: ${e.localizedMessage ?: "An unknown error occurred"}"
+            Log.e("MacAddress", errorMessage, e)
+            errorMessage
+        }
+    }
 
     fun setIpAddress(ip: String) {
         ipAddress.value = ip
@@ -106,9 +150,25 @@ class MainViewModel : ViewModel() {
 
     @RequiresApi(33)
     fun turnOnHotspot(context: Context): String {
+
         if (isLocalOnlyHotspotEnabled()) {
             return "Hotspot is already active."
         }
+
+        //denotes the mac addresses of devices that are permitted to
+        //join the hotspot network.
+
+        var allowedClientMacs = listOf(
+            MacAddress.fromString("e0:dc:ff:eb:5d:f8") // personal phone for testing and accessing web UI
+        ).toMutableList() // Convert to mutable list
+
+        // Check if plugMacAddress is not an empty string
+        if (plugMacAddress != "") {
+            // Add the plugMacAddress to the list
+            allowedClientMacs.add(MacAddress.fromString(plugMacAddress))
+        }
+
+
         startLocalOnlyHotspotWithConfig(
             context = context,
             config = UnhiddenSoftApConfigurationBuilder()
@@ -118,6 +178,11 @@ class MainViewModel : ViewModel() {
                     passphrase = "intrasonics",
                     securityType = SoftApConfiguration.SECURITY_TYPE_WPA2_PSK
                 )
+                .setHiddenSsid(false)
+                //the next line must be commented out/set to false for the blocked client lists to work
+                //allowed client list requires it to be true
+                .setClientControlByUserEnabled((plugMacAddress != ""))
+                .setAllowedClientList(allowedClientMacs)
                 .build(),
             executor = null,
             callback = object : WifiManager.LocalOnlyHotspotCallback() {
@@ -137,7 +202,7 @@ class MainViewModel : ViewModel() {
                 }
             })
 
-        return "starting a new hotspot connection..."
+        return "starting a newhotspot connection..."
     }
 
     @SuppressLint("NewApi")
