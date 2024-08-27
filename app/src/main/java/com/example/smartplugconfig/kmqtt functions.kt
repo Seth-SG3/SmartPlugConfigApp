@@ -29,10 +29,8 @@ fun sendMQTTmessage(command : String, payload : String? = "", host : String, por
                 val client = MQTTClient(
                     MQTTVersion.MQTT5,
                     host,
-                    port,
-                    TLSClientSettings(
-                        serverCertificate = "/storage/emulated/0/Android/data/com.example.smartplugconfig/files/server.crt"
-                    )
+                    port = port,
+                    null
                 ) {
                     println(it.payload?.toByteArray()?.decodeToString())
                 }
@@ -100,8 +98,8 @@ fun setupMqttBroker(context: Context){
                             }
                         }
                     }
-                }, port = 8883,
-                    tlsSettings = TLSSettings(keyStoreFilePath = "/storage/emulated/0/Android/data/com.example.smartplugconfig/files/keyStore.p12", keyStorePassword = "password")
+                }, port = 8883
+                    //tlsSettings = TLSSettings(keyStoreFilePath = "/storage/emulated/0/Android/data/com.example.smartplugconfig/files/keyStore.p12", keyStorePassword = "password")
                     )
                 broker.listen()
                 Log.d("MQTT", "broker setup :)")

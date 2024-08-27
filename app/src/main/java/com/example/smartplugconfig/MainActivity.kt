@@ -296,7 +296,7 @@ fun ButtonsWithTextOutput(
             },
             colors = ButtonDefaults.buttonColors(containerColor = ipsosBlue)
         ) {
-            Text("Send MQTT client", color = Color.White)
+            Text("get plug Mac Address", color = Color.White)
         }
         Spacer(modifier = Modifier.height(20.dp))
         Button(
