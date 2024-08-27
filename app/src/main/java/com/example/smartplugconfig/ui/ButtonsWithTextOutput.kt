@@ -127,6 +127,16 @@ fun ButtonsWithTextOutput(
                     Text("1.3", color = Color.White)
                 }
                 Spacer(modifier = Modifier.height(20.dp))
+                Button(
+                    onClick = {
+                        viewModel.findPlugMacAddress{ result ->
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = ipsosBlue)
+                ) {
+                    Text("get plug Mac Address via MQTT request", color = Color.White)
+                }
+                Spacer(modifier = Modifier.height(20.dp))
                 Text(
                     text = if (isScanning) loadingText else textToDisplay,
                     fontSize = 20.sp, // Increase text size
