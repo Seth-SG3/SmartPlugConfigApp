@@ -41,6 +41,5 @@ object WifiManagerProvider {
     fun initialise(context: Context) {
         wifiManager = context.getSystemService(Context.WIFI_SERVICE) as WifiManager
         connectivityManager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
-
     }
 }

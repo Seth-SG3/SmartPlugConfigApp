@@ -1,7 +1,6 @@
 package com.example.smartplugconfig
 
 
-import kotlinx.coroutines.asCoroutineDispatcher
 import android.annotation.SuppressLint
 import android.app.AlarmManager
 import android.app.Notification
@@ -25,6 +24,7 @@ import android.os.PowerManager
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.viewModels
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -52,7 +52,6 @@ import com.example.smartplugconfig.data.FileHandler
 import com.example.smartplugconfig.data.WifiManagerProvider.connectivityManager
 import com.example.smartplugconfig.data.getPhoneMacAddress
 import com.example.smartplugconfig.data.restartMiFiDongle
-import com.google.firebase.firestore.util.Executors
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -108,10 +107,12 @@ class PowerReadingService : Service() {
 
     // Every time this is called
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        counter += 1
         scheduleAlarm() // Set to restart after a minute
         Log.d("counter", counter.toString())
         if(!::fileHandler.isInitialized) fileHandlerInitialise()
+        if(counter == 1) connectivityManager = AppContext.getContext().getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+
+        counter += 1
         if (counter % 1440 != 0) {
             val activityIntent = Intent(this, DataCycleActivity::class.java)
             activityIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
@@ -150,7 +151,7 @@ class PowerReadingService : Service() {
     }
 
     //Returns current time and date as a string
-    private fun getCurrentTime(): String {
+    fun getCurrentTime(): String {
         val currentDateTime = LocalDateTime.now()
         val formatter = DateTimeFormatter.ofPattern("dd-MM-yyyy HH:mm:ss")
         return currentDateTime.format(formatter)
@@ -209,7 +210,7 @@ class PowerReadingService : Service() {
     }
 
     // Gets data and then writes to a file
-    private suspend fun writeData(
+    suspend fun writeData(
         viewModel: MainViewModel,
         ssid: String,
         password: String,
@@ -277,64 +278,6 @@ class PowerReadingService : Service() {
                     Log.d("WifiConnection", "Connection to $ssid failed")
                 }
             })
-
-    }
-
-
-    @SuppressLint("CoroutineCreationDuringComposition")
-    @Composable
-    fun DataCycleView() {
-        var power by remember { mutableStateOf("Initialising") }
-        val context = LocalContext.current
-        Box(
-            contentAlignment = Alignment.Center,
-            modifier = Modifier.fillMaxSize()
-        ) {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center,
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(Color(0xFF00B140))
-            ) {
-                LaunchedEffect(Unit) {
-                    serviceScope.launch {
-                        power =
-                            writeData(
-                                viewModel,
-                                "4G-UFI-CFE",   // TODO: Make this not hard coded
-                                "1234567890",
-                                getCurrentTime(),
-                                context = context,
-
-                            )
-                    }
-                }
-                Text(text = power)
-                Text(text = getCurrentTime())
-                Spacer(modifier = Modifier.height(20.dp))
-                Button(
-                    onClick = {
-                        restartMiFiDongle()
-
-                    },
-                    colors = ButtonDefaults.buttonColors(containerColor = Color.Blue) // Set button color
-                ) {
-                    Text("Restart Mi-Fi", color = Color.White)
-                }
-                Spacer(modifier = Modifier.height(20.dp))
-                Button(
-                    onClick = {
-                        fileHandler.readFromFile()
-
-                    },
-                    colors = ButtonDefaults.buttonColors(containerColor = Color.Blue) // Set button color
-                ) {
-                    Text("Show power values", color = Color.White)
-                }
-
-            }
-        }
     }
 }
 
@@ -360,7 +303,7 @@ class DataCycleActivity : ComponentActivity() {
         bindToService()
         setContent {
             if (bound) {
-                service?.DataCycleView()
+                DataCycleView()
             } else {
                 // Display a loading or placeholder UI while the service is binding
                 Text("Loading...")
@@ -382,4 +325,63 @@ class DataCycleActivity : ComponentActivity() {
             bound = false
         }
     }
-}
+
+
+    @SuppressLint("CoroutineCreationDuringComposition")
+    @Composable
+    fun DataCycleView() {
+        var power by remember { mutableStateOf("Initialising") }
+        var currentTime by remember { mutableStateOf("Initialising") }
+
+        val context = LocalContext.current
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier = Modifier.fillMaxSize()
+        ) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color(0xFF00B140))
+            ) {
+                LaunchedEffect(Unit) {
+                    val viewModel by viewModels<MainViewModel>()
+                    currentTime = service!!.getCurrentTime()
+
+                    power =
+                        service?.writeData(
+                            viewModel,
+                            "4G-UFI-CFE",   // TODO: Make this not hard coded
+                            "1234567890",
+                            currentTime,
+                            context = context,
+                        )
+                            ?: "No service found"
+                    }
+                }
+                Text(text = power)
+                Text(text = currentTime)
+                Spacer(modifier = Modifier.height(20.dp))
+                Button(
+                    onClick = {
+                        restartMiFiDongle()
+
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color.Blue) // Set button color
+                ) {
+                    Text("Restart Mi-Fi", color = Color.White)
+                }
+                Spacer(modifier = Modifier.height(20.dp))
+                Button(
+                    onClick = {
+                        FileHandler(applicationContext).readFromFile()
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color.Blue) // Set button color
+                ) {
+                    Text("Show power values", color = Color.White)
+                }
+
+            }
+        }
+    }
