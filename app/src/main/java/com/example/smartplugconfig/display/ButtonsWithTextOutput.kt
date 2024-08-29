@@ -2,6 +2,7 @@ package com.example.smartplugconfig.display
 
 import android.content.Context
 import android.os.Build
+import android.util.Log
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
@@ -19,6 +20,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -29,9 +31,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.smartplugconfig.MainViewModel
-import com.example.smartplugconfig.PowerReadingCallback
-import com.example.smartplugconfig.setupMqttBroker
 import kotlinx.coroutines.delay
+
 
 @OptIn(ExperimentalUnsignedTypes::class)
 @RequiresApi(Build.VERSION_CODES.TIRAMISU)
@@ -70,6 +71,7 @@ fun ButtonsWithTextOutput(
         }
     }
 
+
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -93,7 +95,7 @@ fun ButtonsWithTextOutput(
         Button(
             onClick = {
                 val result = viewModel.connectToPlugWifi(context)
-                setCurrentTextOutput(result)
+                viewModel.setCurrentTextOutput(result)
             },
             colors = ButtonDefaults.buttonColors(containerColor = ipsosBlue) // Set button color
         ) {
@@ -103,7 +105,7 @@ fun ButtonsWithTextOutput(
         Button(
             onClick = {
                 viewModel.sendWifiConfig { result ->
-                    setCurrentTextOutput(result)
+                    viewModel.setCurrentTextOutput(result)
                 }
             },
             colors = ButtonDefaults.buttonColors(containerColor = ipsosBlue)
@@ -114,7 +116,7 @@ fun ButtonsWithTextOutput(
         Button(
             onClick = {
                 val result = viewModel.turnOnHotspot(context)
-                setCurrentTextOutput(result)
+                viewModel.setCurrentTextOutput(result)
             },
             colors = ButtonDefaults.buttonColors(containerColor = ipsosBlue)
         ) {
@@ -126,7 +128,7 @@ fun ButtonsWithTextOutput(
                 isScanning = true
                 viewModel.scanDevices(context) { result ->
                     isScanning = false
-                    setCurrentTextOutput(result)
+                    viewModel.setCurrentTextOutput(result)
                     result.let { ip -> viewModel.setIpAddress(ip) } // Set the IP address in the ViewModel.
                 }
             },
@@ -138,7 +140,7 @@ fun ButtonsWithTextOutput(
         Button(
             onClick = {
                 viewModel.sendMQTTConfig { result ->
-                    setCurrentTextOutput(result)
+                    viewModel.setCurrentTextOutput(result)
                 }
 
             },
@@ -149,7 +151,7 @@ fun ButtonsWithTextOutput(
         Spacer(modifier = Modifier.height(20.dp))
         Button(
             onClick = {
-                setupMqttBroker(context)
+                viewModel.setupMQTTBroker(context)
             },
             colors = ButtonDefaults.buttonColors(containerColor = ipsosBlue)
         ) {
@@ -159,7 +161,7 @@ fun ButtonsWithTextOutput(
         Button(
             onClick = {
                 viewModel.findPlugMacAddress{ result ->
-                    setCurrentTextOutput(result)
+                    viewModel.setCurrentTextOutput(result)
                 }
             },
             colors = ButtonDefaults.buttonColors(containerColor = ipsosBlue)
@@ -169,13 +171,7 @@ fun ButtonsWithTextOutput(
         Spacer(modifier = Modifier.height(20.dp))
         Button(
             onClick = {
-                viewModel.getPowerReading(context,object : PowerReadingCallback {
-                    override fun onPowerReadingReceived(power: String) {
-                        setCurrentTextOutput(power)
-                    }
-                }) { result ->
-                    setCurrentTextOutput(result)
-                }
+                viewModel.getPowerReading(context)
             },
             colors = ButtonDefaults.buttonColors(containerColor = ipsosBlue)
         ) {
@@ -190,3 +186,4 @@ fun ButtonsWithTextOutput(
         )
     }
 }
+
