@@ -62,6 +62,12 @@
             android:exported="false"
             android:foregroundServiceType="dataSync" />
 
+        <receiver android:name=".WifiScanReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.net.wifi.SCAN_RESULTS_AVAILABLE_ACTION" />
+            </intent-filter>
+        </receiver>
 
     </application>
 

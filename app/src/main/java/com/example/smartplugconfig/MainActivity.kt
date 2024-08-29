@@ -28,8 +28,7 @@ import java.lang.ref.WeakReference
 class MainActivity : ComponentActivity() {
 
 
-    var mifiNetworks = mutableStateListOf<String>()
-    var plugWifiNetworks = mutableStateListOf<String>()
+
     private lateinit var appInitialisation: AppInitialisation
 
     @RequiresApi(Build.VERSION_CODES.TIRAMISU)
@@ -41,7 +40,7 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             SmartPlugConfigTheme {
-                SmartPlugConfigApp(activity = weakActivity, plugWifiNetworks = plugWifiNetworks)
+                SmartPlugConfigApp(activity = weakActivity)
             }
         }
     }
@@ -95,7 +94,7 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun SmartPlugConfigApp(viewModel: MainViewModel = MainViewModel.getInstance(), activity: WeakReference<MainActivity>, plugWifiNetworks: SnapshotStateList<String>) {
+fun SmartPlugConfigApp(viewModel: MainViewModel = MainViewModel.getInstance(), activity: WeakReference<MainActivity>) {
     val currentTextOutput by remember { mutableStateOf("output") }
 
     ButtonsWithTextOutput(
@@ -103,7 +102,7 @@ fun SmartPlugConfigApp(viewModel: MainViewModel = MainViewModel.getInstance(), a
 
         viewModel = viewModel,
         activity = activity,
-        plugWifiNetworks = plugWifiNetworks
+
     )
 }
 

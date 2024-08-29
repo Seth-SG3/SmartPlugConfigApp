@@ -59,8 +59,7 @@ fun ButtonsWithTextOutput(
     textToDisplay: String,
     viewModel: MainViewModel,
     modifier: Modifier = Modifier,
-    activity: WeakReference<MainActivity>,
-    plugWifiNetworks: SnapshotStateList<String>
+    activity: WeakReference<MainActivity>
 ) {
     var mifiSsid by remember { mutableStateOf("ssid") }
     var status by remember { mutableIntStateOf(1) }
@@ -177,8 +176,6 @@ fun ButtonsWithTextOutput(
         CONNECT_TO_PLUG_WIFI -> {
             Log.d("Status", "Status = $status")      // Allow connections to the plug wifi
             WifiButtons.ChoosePlugWifi(
-                activity = activity,
-                plugWifiNetworks = plugWifiNetworks,
             ) { result ->
                 if (result != null) {
                     when (result) {
@@ -206,7 +203,7 @@ fun ButtonsWithTextOutput(
         CHOOSE_MIFI_NETWORK -> {
             Log.d("Status", "Status = $status")
             // Choose MiFi Network
-            WifiButtons.ChooseMifiNetwork(activity = activity,
+            WifiButtons.ChooseMifiNetwork(
                 mifiNetwork = { mifiSsid = it }) { result ->
                 if (result != null) {
                     when (result) {
@@ -333,8 +330,6 @@ fun ButtonsWithTextOutput(
                     setCurrentTextOutput = { currentTextOutput = it },
                     viewModel = viewModel,
                     modifier = modifier,
-                    activity = activity,
-                    plugWifiNetworks = plugWifiNetworks,
                     context = context,
                     status = { status = it })
             } else {
@@ -346,8 +341,6 @@ fun ButtonsWithTextOutput(
         51 -> {
             Log.d("Status", "Status = $status")      // Allow connections to the plug wifi
             WifiButtons.ChoosePlugWifi(
-                activity = activity,
-                plugWifiNetworks = plugWifiNetworks,
             ) { result ->
                 if (result != null) {
                     when (result) {
@@ -382,8 +375,6 @@ fun HotspotSetupView(
     setCurrentTextOutput: (String) -> Unit,
     viewModel: MainViewModel,
     modifier: Modifier = Modifier,
-    activity: WeakReference<MainActivity>,
-    plugWifiNetworks: SnapshotStateList<String>,
     context: Context,
     status: (Int) -> Unit
 ) {
@@ -534,8 +525,6 @@ fun HotspotSetupView(
     }
     if (connectToPlugWifi) {
         WifiButtons.ChoosePlugWifi(
-            activity = activity,
-            plugWifiNetworks = plugWifiNetworks,
         ) { result ->
             if (result != null) {
                 connectToPlugWifi = false
