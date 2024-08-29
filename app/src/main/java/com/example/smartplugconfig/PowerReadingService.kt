@@ -26,11 +26,10 @@ class PowerReadingService : Service() {
 
 
     @RequiresApi(Build.VERSION_CODES.TIRAMISU)
-    @OptIn(ExperimentalUnsignedTypes::class)
     override fun onCreate() {
         super.onCreate()
         startForegroundService()
-        setupMqttBroker(applicationContext)
+        viewModel.setupMQTTBroker(applicationContext)
         checkAndEnableHotspot(applicationContext,viewModel)
         acquireWakeLock()
     }

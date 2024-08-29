@@ -10,7 +10,11 @@ import android.os.Build
 import android.provider.Settings
 import android.util.Log
 import androidx.annotation.RequiresApi
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.lifecycle.LiveData
+import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.smartplugconfig.hotspot.UnhiddenSoftApConfigurationBuilder
@@ -25,12 +29,38 @@ import java.net.Inet4Address
 import java.net.NetworkInterface
 import java.net.URL
 import java.util.concurrent.Executor
+import kotlin.math.log
+
 
 class MainViewModel : ViewModel() {
     private val _ipAddress = mutableStateOf<String?>(null)
     val _ipAddressMQTT = mutableStateOf<String?>(null)
     private val _port = 8883
     private var plugMacAddress = ""
+    private val mqttBroker = MQTTBrokerAndClient()
+
+    private val _textToDisplay = MutableLiveData("output")
+    val textToDisplay: LiveData<String> get() = _textToDisplay
+
+    fun setCurrentTextOutput(result:String){
+        _textToDisplay.value = result
+        Log.d("MQTT", "text updates: $result")
+    }
+
+    // LiveData to hold the power readings
+    private val _powerReadings = MutableLiveData<String>()
+    val powerReadings: LiveData<String> get() = _powerReadings
+
+    init {
+        // Start collecting the flow in the ViewModel's scope
+        viewModelScope.launch {
+            mqttBroker.powerReadingFlow.collect { powerReading ->
+                _powerReadings.value = powerReading
+                setCurrentTextOutput(powerReading)
+                Log.d("MQTT", "Power reading collected in ViewModel: $powerReading") // Logging
+            }
+        }
+    }
 
     fun findPlugMacAddress(onResult: (String) -> Unit) {
         viewModelScope.launch {
@@ -305,54 +335,29 @@ class MainViewModel : ViewModel() {
         }
     }
 
-    private var powerReadingCallback: PowerReadingCallback? = null
-
-    private fun setPowerReadingCallback(callback: PowerReadingCallback) {
-        powerReadingCallback = callback
+    fun setupMQTTBroker(context: Context){
+        mqttBroker.setupMqttBroker(context)
     }
 
     @RequiresApi(Build.VERSION_CODES.TIRAMISU)
-    fun getPowerReading(context: Context,callback: PowerReadingCallback, onResult: (String) -> Unit) {
+    fun getPowerReading(context: Context) {
         viewModelScope.launch {
-            setPowerReadingCallback(callback)
-            setBrokerPowerReadingCallback(callback)
-            val result = getPowerReadingInternal(context)
-            Log.d("MQTT", "test result: $result")
-            onResult(result)
-        }
-    }
-
-    @RequiresApi(Build.VERSION_CODES.TIRAMISU)
-    private suspend fun getPowerReadingInternal(context: Context): String {
-        var attempts = 0
-
-        while (attempts < 3) {
             if (isLocalOnlyHotspotEnabled()) {
-                return withContext(Dispatchers.IO) {
-                    val latch = java.util.concurrent.CountDownLatch(1)
-                    var powerReadingResult: String? = null
-
-                    setPowerReadingCallback(object : PowerReadingCallback {
-                        override fun onPowerReadingReceived(power: String) {
-                            powerReadingResult = power
-                            latch.countDown()
-                        }
-                    })
-
-                    Log.d("getPowerReading", "Sending MQTT command to get power reading")
-                    _ipAddressMQTT.value?.let { sendMQTTmessage("Status","8", it, _port) }
-
-                    latch.await()
-                    powerReadingResult ?: "Error: No power reading obtained"
+                val result = _ipAddressMQTT.value?.let {
+                    mqttBroker.sendMQTTmessage(
+                        "Status",
+                        "8",
+                        it,
+                        _port
+                    )
                 }
-            } else {
-                turnOnHotspot(context)
-                delay(3000)
-                attempts++
+                Log.d("MQTT", "test result: $result")
+
             }
         }
-        return "Unable to retrieve power reading after 3 attempts"
     }
+
+
 
     //is only actually checking if device has ip but wifi should never be on so i think is ok for now at least for soak testing
     fun isLocalOnlyHotspotEnabled(): Boolean {
