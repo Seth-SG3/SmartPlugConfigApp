@@ -21,8 +21,7 @@ import org.json.JSONObject
 
 class MQTTBrokerAndClient {
 
-    private val _powerReadingFlow = MutableSharedFlow<String>()
-    val powerReadingFlow: SharedFlow<String> = _powerReadingFlow
+    val packetHandler = MqttPacketHandler()
 
     @OptIn(ExperimentalUnsignedTypes::class)
     fun sendMQTTmessage(command: String, payload: String? = "", host: String, port: Int, topic: String) {
@@ -82,44 +81,12 @@ class MQTTBrokerAndClient {
                                         "mqtt connect"
                                     ) //println(packet.protocolName)
                                     is MQTTPublish -> { //Log.d("MQTT", "packet received ${packet.topicName}") //println(packet.topicName)
-                                        if (packet.topicName == "stat/smartPlug/STATUS8") {
-                                            //val powerReading = String(packet.payload,Charsets.UTF_8)
-                                            val powerReadingRaw =
-                                                packet.payload?.toByteArray()?.decodeToString()
-                                            val jsonObject = JSONObject(powerReadingRaw)
-                                            val power = jsonObject.getJSONObject("StatusSNS")
-                                                .getJSONObject("ENERGY")
-                                                .getInt("Power")
-                                            val powerReading = "Power: $power Watts"
-                                            Log.d("MQTT", "got a power reading $powerReading")
-                                            CoroutineScope(Dispatchers.Main).launch {
-                                                _powerReadingFlow.emit(powerReading)
-                                                Log.d("MQTT", "Power reading emitted: $powerReading")
-                                            }
-                                            Log.d("MQTT", "done")
-                                        }
-                                        if (packet.topicName == "tele/smartPlug/SENSOR") {
-                                            //val powerReading = String(packet.payload,Charsets.UTF_8).
-                                            val powerReadingRaw =
-                                                packet.payload?.toByteArray()?.decodeToString()
-                                            val jsonObject = JSONObject(powerReadingRaw)
-                                            val power =
-                                                jsonObject.getJSONObject("ENERGY").getInt("Power")
-                                            val powerReading = "Power: $power Watts"
-                                            Log.d("MQTT", "saving power to csv $powerReading")
-                                            saveToCsv(context, powerReading)
-                                        }
-                                        Log.d("MQTT", "packet received ${packet.topicName}")
-                                        Log.d(
-                                            "MQTT",
-                                            "packet received ${
-                                                packet.payload?.toByteArray()?.decodeToString()
-                                            }"
-                                        )
+                                        packetHandler.packetRecieved(packet, context)
                                     }
                                 }
                             }
                         }, port = 8883
+                        //the next line is how you enable encryption, requires keystore to be in listed directory so wont work on anything except the pixel 7a as is.
                         //tlsSettings = TLSSettings(keyStoreFilePath = "/storage/emulated/0/Android/data/com.example.smartplugconfig/files/keyStore.p12", keyStorePassword = "password")
                     )
                     broker.listen()

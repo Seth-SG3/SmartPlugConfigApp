@@ -39,6 +39,7 @@ class MainViewModel : ViewModel() {
     private val _topic = "smartPlug"
     private var plugMacAddress = ""
     private val mqttBroker = MQTTBrokerAndClient()
+    private val packetHandler = MqttPacketHandler()
 
     private val _textToDisplay = MutableLiveData("output")
     val textToDisplay: LiveData<String> get() = _textToDisplay
@@ -55,7 +56,7 @@ class MainViewModel : ViewModel() {
     init {
         // Start collecting the flow in the ViewModel's scope
         viewModelScope.launch {
-            mqttBroker.powerReadingFlow.collect { powerReading ->
+            packetHandler.powerReadingFlow.collect { powerReading ->
                 _powerReadings.postValue(powerReading)
                 setCurrentTextOutput(powerReading)
                 Log.d("MQTT", "Power reading collected in ViewModel: $powerReading") // Logging
