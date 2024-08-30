@@ -7,7 +7,7 @@ import kotlinx.coroutines.flow.StateFlow
 object NetworkRepository{
 
     private val _mifiNetworks = MutableStateFlow<List<String>>(emptyList())
-    val mifiNetworks: StateFlow<List<String>> get() = _plugWifiNetworks
+    val mifiNetworks: StateFlow<List<String>> get() = _mifiNetworks
     private val _plugWifiNetworks = MutableStateFlow<List<String>>(emptyList())
     val plugWifiNetworks: StateFlow<List<String>> get() = _plugWifiNetworks
     fun thisRetriever():String{

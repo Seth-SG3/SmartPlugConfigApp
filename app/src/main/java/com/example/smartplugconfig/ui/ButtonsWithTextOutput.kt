@@ -175,8 +175,7 @@ fun ButtonsWithTextOutput(
 
         CONNECT_TO_PLUG_WIFI -> {
             Log.d("Status", "Status = $status")      // Allow connections to the plug wifi
-            WifiButtons.ChoosePlugWifi(
-            ) { result ->
+            WifiButtons.ChoosePlugWifi { result ->
                 if (result != null) {
                     when (result) {
                         "Success" -> {

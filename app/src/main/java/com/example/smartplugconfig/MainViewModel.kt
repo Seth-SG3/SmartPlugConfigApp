@@ -78,7 +78,7 @@ class MainViewModel : ViewModel() {
 
     fun setIpAddress(ip: String) {
         ipAddress.value = ip
-        Log.d("setipaddress $this", ip)
+        Log.d("setIpAddress $this", ip)
     }
 
     fun scanDevices(onScanCompleted: (String?) -> Unit) {
@@ -202,7 +202,7 @@ class MainViewModel : ViewModel() {
                 }
             })
 
-        return "starting a newhotspot connection..."
+        return "starting a new hotspot connection..."
     }
 
     @SuppressLint("NewApi")

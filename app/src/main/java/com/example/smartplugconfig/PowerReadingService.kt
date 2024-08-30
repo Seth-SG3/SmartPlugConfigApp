@@ -346,7 +346,7 @@ class DataCycleActivity : ComponentActivity() {
                     .background(Color(0xFF00B140))
             ) {
                 LaunchedEffect(Unit) {
-                    val viewModel by viewModels<MainViewModel>()
+                    val viewModel = MainViewModel.getInstance()
                     currentTime = service!!.getCurrentTime()
 
                     power =
