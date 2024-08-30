@@ -4,7 +4,7 @@ import androidx.compose.runtime.mutableStateListOf
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 
-class NetworkRepository {
+object NetworkRepository{
 
     private val _mifiNetworks = MutableStateFlow<List<String>>(emptyList())
     val mifiNetworks: StateFlow<List<String>> get() = _plugWifiNetworks

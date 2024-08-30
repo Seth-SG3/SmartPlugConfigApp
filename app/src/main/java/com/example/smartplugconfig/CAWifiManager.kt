@@ -7,7 +7,7 @@ import com.example.smartplugconfig.data.WifiManagerProvider.wifiManager
 
 class CAWifiManager{
     private var lastScanTime = 0L
-    val repository = NetworkRepository()
+    private val repository = NetworkRepository
 
     @Suppress("DEPRECATION")
     @SuppressLint("MissingPermission")
@@ -36,13 +36,13 @@ class CAWifiManager{
 
         // Find just the SSIDs
         val wifiNetworksList = wifiFullnfo.map { it.SSID }
-        var filteredWifiNetworksList = wifiNetworksList/*.filter {
+        var filteredWifiNetworksList = wifiNetworksList.filter {
             it.contains("plug", ignoreCase = true) or it.contains(
                 "tasmota",
                 ignoreCase = true
             )
         }
-*/
+
         repository.clearPlugWifiNetworks()
         repository.addPlugWifiNetworkList(filteredWifiNetworksList)
 
