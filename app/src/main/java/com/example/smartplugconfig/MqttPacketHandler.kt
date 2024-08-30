@@ -8,12 +8,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.launch
-import mqtt.MQTTVersion
-import mqtt.broker.Broker
-import mqtt.broker.interfaces.PacketInterceptor
-import mqtt.packets.MQTTPacket
-import mqtt.packets.Qos
-import mqtt.packets.mqtt.MQTTConnect
 import mqtt.packets.mqtt.MQTTPublish
 import org.json.JSONObject
 

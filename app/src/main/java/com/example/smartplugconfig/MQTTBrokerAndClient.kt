@@ -3,11 +3,8 @@ package com.example.smartplugconfig
 import MQTTClient
 import android.content.Context
 import android.util.Log
-import com.example.smartplugconfig.CsvUtils.saveToCsv
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import mqtt.MQTTVersion
@@ -17,7 +14,6 @@ import mqtt.packets.MQTTPacket
 import mqtt.packets.Qos
 import mqtt.packets.mqtt.MQTTConnect
 import mqtt.packets.mqtt.MQTTPublish
-import org.json.JSONObject
 
 class MQTTBrokerAndClient {
 
