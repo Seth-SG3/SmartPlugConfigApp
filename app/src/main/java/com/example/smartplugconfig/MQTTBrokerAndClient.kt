@@ -25,7 +25,8 @@ class MQTTBrokerAndClient {
     val powerReadingFlow: SharedFlow<String> = _powerReadingFlow
 
     @OptIn(ExperimentalUnsignedTypes::class)
-    fun sendMQTTmessage(command: String, payload: String? = "", host: String, port: Int) {
+    fun sendMQTTmessage(command: String, payload: String? = "", host: String, port: Int, topic: String) {
+        //method to send a single mqtt command have removed all hard coded values
         CoroutineScope(Dispatchers.Main).launch {
             withContext(Dispatchers.IO) {
                 try {
@@ -43,7 +44,7 @@ class MQTTBrokerAndClient {
                     client.publish(
                         false,
                         Qos.EXACTLY_ONCE,
-                        "cmnd/smartPlug/$command",
+                        "cmnd/$topic/$command",
                         "$payload".encodeToByteArray().toUByteArray()
                     )
                     //Log.d("MQTT", "Message published successfully.")
@@ -98,7 +99,7 @@ class MQTTBrokerAndClient {
                                             Log.d("MQTT", "done")
                                         }
                                         if (packet.topicName == "tele/smartPlug/SENSOR") {
-                                            //val powerReading = String(packet.payload,Charsets.UTF_8)
+                                            //val powerReading = String(packet.payload,Charsets.UTF_8).
                                             val powerReadingRaw =
                                                 packet.payload?.toByteArray()?.decodeToString()
                                             val jsonObject = JSONObject(powerReadingRaw)

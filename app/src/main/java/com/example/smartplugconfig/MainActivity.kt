@@ -139,6 +139,7 @@ fun SmartPlugConfigApp(viewModel: MainViewModel = viewModel()) {
     val context = LocalContext.current
 
     val textToDisplay by viewModel.textToDisplay.observeAsState("output")
+    Log.d("MQTT", "Recomposing with textToDisplay: $textToDisplay")
 
     ButtonsWithTextOutput(
         textToDisplay = textToDisplay,
