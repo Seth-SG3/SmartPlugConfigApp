@@ -44,6 +44,7 @@ class MqttPacketHandler {
                 jsonObject?.getJSONObject("ENERGY")?.getInt("Power")
             val powerReading = "Power: $power Watts"
             Log.d("MQTT", "saving power to csv $powerReading")
+            (context as PowerReadingService).lastReceivedTime = System.currentTimeMillis()
             saveToCsv(context, powerReading)
         }
     }

@@ -22,7 +22,7 @@ class PowerReadingService : Service() {
 
     private val viewModel = MainViewModel.getInstance()
     private lateinit var wakeLock: PowerManager.WakeLock
-
+    var lastReceivedTime: Long = System.currentTimeMillis()
 
 
     @RequiresApi(Build.VERSION_CODES.TIRAMISU)
@@ -31,6 +31,7 @@ class PowerReadingService : Service() {
         startForegroundService()
         viewModel.setupMQTTBroker(applicationContext)
         checkAndEnableHotspot(applicationContext,viewModel)
+        reconfigMqtt(applicationContext,viewModel)
         acquireWakeLock()
     }
 
@@ -87,6 +88,27 @@ class PowerReadingService : Service() {
                 }
             }
         }
+    }
+
+    private fun reconfigMqtt(context: Context, viewModel: MainViewModel){
+        CoroutineScope(Dispatchers.Main).launch {
+            withContext(Dispatchers.IO) {
+                while (true) {
+                    val currentTime = System.currentTimeMillis()
+                    if (currentTime - lastReceivedTime > 5 * 60 * 1000) {
+                        viewModel.sendMQTTConfig { result ->
+                            viewModel.setCurrentTextOutput(result)
+                        }
+                        viewModel.scanDevices(context) { result ->
+                            viewModel.setCurrentTextOutput(result)
+                            result.let { ip -> viewModel.setIpAddress(ip) } // Set the IP address in the ViewModel.
+                        }
+                    }
+                    delay(60000)
+                }
+            }
+        }
+
     }
 
 
