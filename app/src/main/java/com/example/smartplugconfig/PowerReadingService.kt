@@ -31,7 +31,6 @@ class PowerReadingService : Service() {
         startForegroundService()
         viewModel.setupMQTTBroker(applicationContext)
         checkAndEnableHotspot(applicationContext,viewModel)
-        reconfigMqtt(applicationContext,viewModel)
         acquireWakeLock()
     }
 
@@ -110,7 +109,5 @@ class PowerReadingService : Service() {
         }
 
     }
-
-
 
 }
