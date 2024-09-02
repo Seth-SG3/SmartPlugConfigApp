@@ -10,16 +10,13 @@ import android.os.Build
 import android.provider.Settings
 import android.util.Log
 import androidx.annotation.RequiresApi
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.smartplugconfig.hotspot.UnhiddenSoftApConfigurationBuilder
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
@@ -29,7 +26,6 @@ import java.net.Inet4Address
 import java.net.NetworkInterface
 import java.net.URL
 import java.util.concurrent.Executor
-import kotlin.math.log
 
 
 class MainViewModel : ViewModel() {
@@ -181,6 +177,8 @@ class MainViewModel : ViewModel() {
 
     private suspend fun sendWifiConfigInternal(ssid: String, password: String): String {
         //uses default ip for tasmota plug wifi ap
+
+
         val urlString =
             "http://192.168.4.1/cm?cmnd=Backlog%20SSID1%20${ssid}%3B%20Password1%20${password}%3B%20WifiConfig%205%3B%20restart%201"
         return try {
@@ -337,6 +335,7 @@ class MainViewModel : ViewModel() {
         }
     }
 
+    @OptIn(ExperimentalUnsignedTypes::class)
     fun setupMQTTBroker(context: Context){
         mqttBroker.setupMqttBroker(context)
     }
