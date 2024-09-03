@@ -30,7 +30,7 @@ import java.util.concurrent.Executor
 
 class MainViewModel : ViewModel() {
     private val _ipAddress = mutableStateOf<String?>(null)
-    val _ipAddressMQTT = mutableStateOf<String?>(null)
+    private val _ipAddressMQTT = mutableStateOf<String?>(null)
     private val _port = 8883
     private val _topic = "smartPlug"
     private var plugMacAddress = ""
@@ -118,8 +118,8 @@ class MainViewModel : ViewModel() {
     }
 
 
-    fun scanDevices(context: Context, onScanCompleted: (String) -> Unit) {
-        val deviceScanner = DeviceScanner(context)
+    fun scanDevices(onScanCompleted: (String) -> Unit) {
+        val deviceScanner = DeviceScanner()
         deviceScanner.scanDevices(object : DeviceScanner.ScanCallback {
             override fun onScanCompleted(devices: List<String>) {
                 val result = if (devices.isEmpty()) {
@@ -335,7 +335,7 @@ class MainViewModel : ViewModel() {
     }
 
     @RequiresApi(Build.VERSION_CODES.TIRAMISU)
-    fun getPowerReading(context: Context) {
+    fun getPowerReading() {
         viewModelScope.launch {
             if (isLocalOnlyHotspotEnabled()) {
                 val result = _ipAddressMQTT.value?.let {

@@ -7,7 +7,6 @@ import android.app.Service
 import android.content.Context
 import android.content.Intent
 import android.os.Build
-import android.os.Handler
 import android.os.IBinder
 import android.os.PowerManager
 import android.util.Log
@@ -32,6 +31,7 @@ class PowerReadingService : Service() {
         startForegroundService()
         viewModel.setupMQTTBroker(applicationContext)
         checkAndEnableHotspot(applicationContext,viewModel)
+        reconfigMqtt(viewModel)
         acquireWakeLock()
     }
 
@@ -91,7 +91,7 @@ class PowerReadingService : Service() {
         }
     }
 
-    private fun reconfigMqtt(context: Context, viewModel: MainViewModel){
+    private fun reconfigMqtt(viewModel: MainViewModel){
         CoroutineScope(Dispatchers.Main).launch {
             withContext(Dispatchers.IO) {
                 while (true) {
@@ -101,7 +101,7 @@ class PowerReadingService : Service() {
                         viewModel.sendMQTTConfig { result ->
                             viewModel.setCurrentTextOutput(result)
                         }
-                        viewModel.scanDevices(context) { result ->
+                        viewModel.scanDevices { result ->
                             viewModel.setCurrentTextOutput(result)
                             result.let { ip -> viewModel.setIpAddress(ip) } // Set the IP address in the ViewModel.
                         }

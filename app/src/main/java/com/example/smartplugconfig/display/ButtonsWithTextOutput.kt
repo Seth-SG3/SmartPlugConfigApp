@@ -34,7 +34,6 @@ import com.example.smartplugconfig.MainViewModel
 import kotlinx.coroutines.delay
 
 
-@OptIn(ExperimentalUnsignedTypes::class)
 @RequiresApi(Build.VERSION_CODES.TIRAMISU)
 @Composable
 fun ButtonsWithTextOutput(
@@ -134,7 +133,7 @@ fun ButtonsWithTextOutput(
         Button(
             onClick = {
                 isScanning = true
-                viewModel.scanDevices(context) { result ->
+                viewModel.scanDevices { result ->
                     isScanning = false
                     viewModel.setCurrentTextOutput(result)
                     result.let { ip -> viewModel.setIpAddress(ip) } // Set the IP address in the ViewModel.
@@ -179,7 +178,7 @@ fun ButtonsWithTextOutput(
         Spacer(modifier = Modifier.height(20.dp))
         Button(
             onClick = {
-                viewModel.getPowerReading(context)
+                viewModel.getPowerReading()
             },
             colors = ButtonDefaults.buttonColors(containerColor = ipsosBlue)
         ) {
