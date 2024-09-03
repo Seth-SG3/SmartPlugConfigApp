@@ -149,17 +149,3 @@ fun SmartPlugConfigApp(viewModel: MainViewModel = viewModel()) {
     )
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-

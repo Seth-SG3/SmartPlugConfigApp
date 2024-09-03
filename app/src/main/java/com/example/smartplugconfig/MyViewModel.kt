@@ -62,46 +62,25 @@ class MainViewModel : ViewModel() {
 
     fun findPlugMacAddress(onResult: (String) -> Unit) {
         viewModelScope.launch {
-            val result = findPlugMacAddressInternal()
-            onResult(result)
-        }
+            val getMacAddressUrl = "http://${_ipAddress.value}/cm?cmnd=Status%205"
+            val response = sendHttpRequest(getMacAddressUrl,"MacAddress")
+            try {
+                // Convert the response string to a JSONObject
+                val jsonObject = JSONObject(response)
 
-    }
-
-    private suspend fun findPlugMacAddressInternal():String{
-
-        val urlString =
-            "http://${_ipAddress.value}/cm?cmnd=Status%205"
-        return try {
-            Log.d("MacAddress", "Attempting to send request to $urlString")
-            val url = URL(urlString)
-            withContext(Dispatchers.IO) {
-                with(url.openConnection() as HttpURLConnection) {
-                    requestMethod = "GET"
-                    Log.d("MacAddress", "Request method set to $requestMethod")
-
-                    val responseCode = responseCode
-                    Log.d("MacAddress", "Response code: $responseCode")
-                    if (responseCode == HttpURLConnection.HTTP_OK) {
-                        val response = inputStream.bufferedReader().use(BufferedReader::readText)
-                        Log.d("MacAddress", "Response: $response")
-                        val jsonObject = JSONObject(response)
-                        val statusNetObject = jsonObject.getJSONObject("StatusNET")
-                        plugMacAddress = statusNetObject.getString("Mac")
-                        statusNetObject.getString("Mac")
-
-                    } else {
-                        "HTTP error code: $responseCode"
-                    }
-                }
+                // Navigate through the JSON object to get the MAC address
+                val statusNet = jsonObject.getJSONObject("StatusNET")
+                val macAddress = statusNet.getString("Mac")
+                onResult(macAddress)
+            } catch (e: Exception) {
+                // Handle any errors
+                Log.e("MacAddress", "Error parsing JSON: ${e.localizedMessage}")
+                onResult("")
             }
-        } catch (e: Exception) {
-            val errorMessage = "Error: ${e.localizedMessage ?: "An unknown error occurred"}"
-            Log.e("MacAddress", errorMessage, e)
-            errorMessage
-        }
-    }
 
+        }
+
+    }
 
     companion object {
         @Volatile private var instance: MainViewModel? = null
@@ -149,64 +128,46 @@ class MainViewModel : ViewModel() {
     }
 
 
-//    fun turnOnHotspot(context: Context): String {
-//        // Create an Intent to open the hotspot settings
-//        val intent = Intent(Settings.ACTION_WIRELESS_SETTINGS)
-//
-//        // Check if there is an activity that can handle this intent
-//        if (intent.resolveActivity(context.packageManager) != null) {
-//            // Start the settings activity
-//            context.startActivity(intent)
-//            return "Opening hotspot settings..."
-//        } else {
-//            return "Unable to open hotspot settings."
-//        }
-//    }
-
 
     fun sendWifiConfig(
         ssid: String = "Pixel",
         password: String = "intrasonics",
         onResult: (String) -> Unit
     ) {
+        val wifiConfigUrl =
+            "http://192.168.4.1/cm?cmnd=Backlog%20SSID1%20${ssid}%3B%20Password1%20${password}%3B%20WifiConfig%205%3B%20restart%201"
         viewModelScope.launch {
-            val result = sendWifiConfigInternal(ssid, password)
-            onResult(result)
+            val result = sendHttpRequest(wifiConfigUrl, "WifiConfig")
+            onResult("Response: $result")
         }
     }
 
-    private suspend fun sendWifiConfigInternal(ssid: String, password: String): String {
-        //uses default ip for tasmota plug wifi ap
 
-
-        val urlString =
-            "http://192.168.4.1/cm?cmnd=Backlog%20SSID1%20${ssid}%3B%20Password1%20${password}%3B%20WifiConfig%205%3B%20restart%201"
+    private suspend fun sendHttpRequest(urlString: String, logTag: String): String {
         return try {
-            Log.d("sendWifiConfig", "Attempting to send request to $urlString")
+            Log.d(logTag, "Attempting to send request to $urlString")
             val url = URL(urlString)
             withContext(Dispatchers.IO) {
                 with(url.openConnection() as HttpURLConnection) {
                     requestMethod = "GET"
-                    Log.d("sendWifiConfig", "Request method set to $requestMethod")
+                    Log.d(logTag, "Request method set to $requestMethod")
 
                     val responseCode = responseCode
-                    Log.d("sendWifiConfig", "Response code: $responseCode")
+                    Log.d(logTag, "Response code: $responseCode")
                     if (responseCode == HttpURLConnection.HTTP_OK) {
                         val response = inputStream.bufferedReader().use(BufferedReader::readText)
-                        Log.d("sendWifiConfig", "Response: $response")
-                        "Response: $response"
+                        Log.d(logTag, "Response: $response")
+                        response
                     } else {
                         "HTTP error code: $responseCode"
                     }
                 }
             }
         } catch (e: Exception) {
-            Log.e("sendWifiConfig", "Exception occurred", e)
+            Log.e(logTag, "Exception occurred", e)
             "Error: ${e.localizedMessage ?: "An unknown error occurred"}"
         }
     }
-
-
 
     @RequiresApi(33)
     fun turnOnHotspot(context: Context): String {
@@ -214,7 +175,6 @@ class MainViewModel : ViewModel() {
         if (isLocalOnlyHotspotEnabled()) {
             return "Hotspot is already active."
         }
-
         //denotes the mac addresses of devices that are permitted to
         //join the hotspot network.
 
@@ -227,7 +187,6 @@ class MainViewModel : ViewModel() {
             // Add the plugMacAddress to the list
             allowedClientMacs.add(MacAddress.fromString(plugMacAddress))
         }
-
 
         startLocalOnlyHotspotWithConfig(
             context = context,
@@ -281,13 +240,6 @@ class MainViewModel : ViewModel() {
     }
 
     fun sendMQTTConfig(onResult: (String) -> Unit) {
-        viewModelScope.launch {
-            val result = sendMQTTConfigInternal()
-            onResult(result)
-        }
-    }
-
-    private suspend fun sendMQTTConfigInternal(): String {
         val ip = _ipAddress.value
         val host = _ipAddressMQTT.value
         val topic = "smartPlug"
@@ -299,35 +251,14 @@ class MainViewModel : ViewModel() {
         if (host == null){
             Log.d("sendMQTTConfig", "device ip not found")
         }
+        val mqttConfigUrl = "http://${ip}/cm?cmnd=Backlog%20MqttHost%20$host%3B%20MqttPort%20$port%3B%20MqttUser%20Test1%3B%20MqttPassword%20Test2%3B%20Topic%20$topic%3B%20SetOption140%201%3B%20MqttRetry%2010%3B%20MqttWifiTimeout%2020000%3B%20TelePeriod%2060"
 
-
-        val urlString =
-            "http://${ip}/cm?cmnd=Backlog%20MqttHost%20$host%3B%20MqttPort%20$port%3B%20MqttUser%20Test1%3B%20MqttPassword%20Test2%3B%20Topic%20$topic%3B%20SetOption140%201%3B%20MqttRetry%2010%3B%20MqttWifiTimeout%2020000%3B%20TelePeriod%2060"
-        return try {
-            Log.d("sendMQTTConfig", "Attempting to send request to $urlString")
-            val url = URL(urlString)
-            withContext(Dispatchers.IO) {
-                with(url.openConnection() as HttpURLConnection) {
-                    requestMethod = "GET"
-                    Log.d("sendMQTTConfig", "Request method set to $requestMethod")
-
-                    val responseCode = responseCode
-                    Log.d("sendMQTTConfig", "Response code: $responseCode")
-                    if (responseCode == HttpURLConnection.HTTP_OK) {
-                        val response = inputStream.bufferedReader().use(BufferedReader::readText)
-                        Log.d("sendMQTTConfig", "Response: $response")
-                        "Response: $response"
-                    } else {
-                        "HTTP error code: $responseCode"
-                    }
-                }
-            }
-        } catch (e: Exception) {
-            val errorMessage = "Error: ${e.localizedMessage ?: "An unknown error occurred"}"
-            Log.e("sendMQTTConfig", errorMessage, e)
-            errorMessage
+        viewModelScope.launch {
+            val result = sendHttpRequest(mqttConfigUrl,"MQTT")
+            onResult("Response: $result")
         }
     }
+
 
     @OptIn(ExperimentalUnsignedTypes::class)
     fun setupMQTTBroker(context: Context){
