@@ -82,16 +82,6 @@ class MainViewModel : ViewModel() {
 
     }
 
-    companion object {
-        @Volatile private var instance: MainViewModel? = null
-
-        fun getInstance(): MainViewModel =
-            instance ?: synchronized(this) {
-                instance ?: MainViewModel().also { instance = it }
-            }
-    }
-
-
     fun setIpAddress(ip: String) {
         _ipAddress.value = ip
     }
@@ -256,7 +246,6 @@ class MainViewModel : ViewModel() {
         }
     }
 
-
     @OptIn(ExperimentalUnsignedTypes::class)
     fun setupMQTTBroker(context: Context){
         mqttBroker.setupMqttBroker(context)
@@ -280,8 +269,6 @@ class MainViewModel : ViewModel() {
             }
         }
     }
-
-
 
     //is only actually checking if device has ip but wifi should never be on so i think is ok for now at least for soak testing
     fun isLocalOnlyHotspotEnabled(): Boolean {
@@ -311,6 +298,15 @@ class MainViewModel : ViewModel() {
         Log.d("isLocalOnlyHotspotEnabled", "Cannot get IP address")
         return false
 
+    }
+
+    companion object {
+        @Volatile private var instance: MainViewModel? = null
+
+        fun getInstance(): MainViewModel =
+            instance ?: synchronized(this) {
+                instance ?: MainViewModel().also { instance = it }
+            }
     }
 
 }

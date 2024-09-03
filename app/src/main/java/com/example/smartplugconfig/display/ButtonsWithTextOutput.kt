@@ -73,11 +73,8 @@ fun ButtonsWithTextOutput(
     val powerReading by viewModel.powerReadings.observeAsState()
     powerReading?.let {
         setCurrentTextOutput(it) // Update currentTextOutput when power reading is received
-        Log.d("MQTT", "Updated textToDisplay: $it") // Logging
+        Log.d("MQTT", "Updated textToDisplay: $it")
     }
-
-    Log.d("MQTT", "Recomposing with textToDisplay composable: $textToDisplay") // Logging to verify recomposition
-
 
     Column(
         modifier = modifier
