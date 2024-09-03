@@ -2,6 +2,10 @@ package com.example.smartplugconfig.data
 
 import android.util.Log
 import com.google.gson.Gson
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import okhttp3.Call
 import okhttp3.Callback
 import okhttp3.MediaType.Companion.toMediaType
@@ -10,10 +14,10 @@ import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.Response
 import org.json.JSONObject
-import java.io.BufferedReader
 import java.io.IOException
-import java.net.HttpURLConnection
-import java.net.URL
+import kotlin.coroutines.resume
+import kotlin.coroutines.suspendCoroutine
+
 
 fun restartMiFiDongle() {
     val client = OkHttpClient()
@@ -53,45 +57,33 @@ fun restartMiFiDongle() {
 
 lateinit var phoneMacAddress: String
 lateinit var plugMacAddress: String
-fun getPlugMacAddress(){
+fun getPlugMacAddress() {
+    CoroutineScope(Dispatchers.Main).launch{
+        try {
+            val response = fetchPlugMac()
+            Log.d("Get plug mac", "Plug Mac found as $response")
+            plugMacAddress = response
+        }catch(e:Exception){
+            Log.e("MacAddress", "Failed to fetch Mac Address ${e.message}")
 
-     try {
-         Log.d("getPlugMAC", "Attempting to send request")
-         val url = URL(PLUG_MAC_URL)
-         with(url.openConnection() as HttpURLConnection) {
-             requestMethod = "GET"
-             Log.d("getPlugMAC", "Request method set to $requestMethod")
+        }
+    }
+}
 
-             val responseCode = responseCode
-             Log.d("getPlugMAC", "Response code: $responseCode")
-             if (responseCode == HttpURLConnection.HTTP_OK) {
-                 val response = inputStream.bufferedReader().use(BufferedReader::readText)
-                 Log.d("getPlugMAC", "Response: $response")
+suspend fun fetchPlugMac(): String {
+    return withContext(Dispatchers.IO){
+            val response = fetchMacAddressResponse()
 
-                 // Parse the JSON response
-                 val jsonObject = JSONObject(response)
-                 val statusNET = jsonObject.getJSONObject("StatusNET")
-                 plugMacAddress = statusNET.getString("Mac")
-
-                 // Return the formatted string
-                 Log.d("MacAddress", "Plug Mac Address : $plugMacAddress")
-
-             } else {
-                 "HTTP error code: $responseCode"
-             }
-         }
-
-     } catch (e: Exception) {
-         val errorMessage = "Error: ${e.localizedMessage ?: "An unknown error occurred"}"
-         Log.e("getPlugMAC", errorMessage, e)
-     }
+            //Parse the JSON response
+            val jsonObject = JSONObject(response)
+            val statusNET = jsonObject.getJSONObject("StatusNET")
+            val result = statusNET.getString("Mac")
+            result
+    }
 }
 
 fun getPhoneMacAddress(){
-
-
     val client = OkHttpClient()
-
     // Prepare the JSON payload for restart request
 
 

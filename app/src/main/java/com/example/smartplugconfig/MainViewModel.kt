@@ -11,11 +11,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.smartplugconfig.data.DeviceScanner
-import com.example.smartplugconfig.data.PowerService
-import com.example.smartplugconfig.data.createRetrofitInstance
+import com.example.smartplugconfig.data.fetchPowerServiceResponse
 import com.example.smartplugconfig.data.wifiConfigUrl
 import com.example.smartplugconfig.hotspot.UnhiddenSoftApConfigurationBuilder
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -26,11 +24,9 @@ import java.net.Inet4Address
 import java.net.NetworkInterface
 import java.net.URL
 import java.util.concurrent.Executor
-import kotlin.coroutines.resume
-import kotlin.coroutines.suspendCoroutine
 
 class MainViewModel : ViewModel() {
-    private val ipAddress = mutableStateOf<String?>(null)
+    val ipAddress = mutableStateOf<String?>(null)
     private val _ipAddressMQTT = mutableStateOf<String?>(null)
     private var plugMacAddress = ""
 
@@ -281,28 +277,17 @@ class MainViewModel : ViewModel() {
 
     private suspend fun getPowerReadingInternal(): String {
 
-
-        val ip = ipAddress.value
-        Log.d("ReadIpAddress $this", "ip address found as $ip")
-        val response = ip?.let { fetchPower(it) }
+        val response = fetchPowerServiceResponse()
         // Use the result here
-        if (response != null) {
-            Log.d("Retrofit", "response = $response")
-        }else{
-            Log.d("Retrofit", "response = null")
-        }
-        if (response == null) {
-            Log.d("Response", "Response is null")
-            return "Error fetching power"
-        }else{
+        Log.d("Retrofit", "response = $response")
+
         // Parse the JSON response
-            val jsonObject = JSONObject(response)
-            val statusSNS = jsonObject.getJSONObject("StatusSNS")
-            val energy = statusSNS.getJSONObject("ENERGY")
-            val power = energy.getInt("Power")
-            // Return the formatted string
-            return "Power: $power Watts"
-        }
+        val jsonObject = JSONObject(response)
+        val statusSNS = jsonObject.getJSONObject("StatusSNS")
+        val energy = statusSNS.getJSONObject("ENERGY")
+        val power = energy.getInt("Power")
+        // Return the formatted string
+        return "Power: $power Watts"
 
 
     }
@@ -339,37 +324,6 @@ class MainViewModel : ViewModel() {
         Log.d("isLocalOnlyHotspotEnabled", "Cannot get IP address")
         return false
 
-    }
-
-
-
-    private suspend fun getPowerRetro(ipAddress:String) :String {
-        val retrofit = createRetrofitInstance(ipAddress)
-
-        val retrofitService = retrofit.create(PowerService::class.java)
-        return try {
-            val response = withContext(Dispatchers.IO) { retrofitService.getPower() }
-            if (response.isSuccessful) {
-                val listResult = response.body()
-                Log.d("List", listResult ?: "No result")
-                listResult ?: "No result" // Return the result here
-            } else {
-                Log.e("Error", "Failed to fetch power: ${response.errorBody()?.string()}")
-                "Error fetching power"
-            }
-        }catch (e: Exception) {
-            Log.e("Error", "Failed to fetch power: ${e.message}")
-            "Error fetching power"
-        }
-    }
-
-    suspend fun fetchPower(ipAddress: String): String {
-        return suspendCoroutine { continuation ->
-            CoroutineScope(Dispatchers.Main).launch {
-                val result = getPowerRetro(ipAddress)
-                continuation.resume(result)
-            }
-        }
     }
 
 
