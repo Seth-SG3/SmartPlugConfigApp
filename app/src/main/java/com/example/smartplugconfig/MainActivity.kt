@@ -52,7 +52,7 @@ class MainActivity : ComponentActivity() {
 
 
         val intent = Intent(this, PowerReadingService::class.java)
-        startForegroundService(intent)
+        startService(intent)
 
         scheduleAlarm()
 

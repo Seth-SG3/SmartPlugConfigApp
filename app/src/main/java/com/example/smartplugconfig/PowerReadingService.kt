@@ -28,6 +28,7 @@ class PowerReadingService : Service() {
     @RequiresApi(Build.VERSION_CODES.TIRAMISU)
     override fun onCreate() {
         super.onCreate()
+        ServiceHolder.setService(this)
         startForegroundService()
         viewModel.setupMQTTBroker(applicationContext)
         checkAndEnableHotspot(applicationContext,viewModel)
@@ -37,6 +38,7 @@ class PowerReadingService : Service() {
 
     override fun onDestroy() {
         super.onDestroy()
+        ServiceHolder.clearService()
         releaseWakeLock()
     }
 
@@ -95,6 +97,7 @@ class PowerReadingService : Service() {
             withContext(Dispatchers.IO) {
                 while (true) {
                     val currentTime = System.currentTimeMillis()
+                    Log.d("MQTT", "current time : $currentTime, last received: $lastReceivedTime")
                     if (currentTime - lastReceivedTime > 5 * 60 * 1000) {
                         viewModel.sendMQTTConfig { result ->
                             viewModel.setCurrentTextOutput(result)

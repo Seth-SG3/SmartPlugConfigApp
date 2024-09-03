@@ -18,6 +18,12 @@ class MqttPacketHandler {
 
     @OptIn(ExperimentalUnsignedTypes::class)
     fun packetRecieved(packet: MQTTPublish, context: Context) {
+        val service = ServiceHolder.getService()
+        if (service == null) {
+            Log.e("MQTT", "PowerReadingService instance is not available")
+            return
+        }
+
 
         if (packet.topicName == "stat/smartPlug/STATUS8") {
             //val powerReading = String(packet.payload,Charsets.UTF_8)
@@ -44,8 +50,9 @@ class MqttPacketHandler {
                 jsonObject?.getJSONObject("ENERGY")?.getInt("Power")
             val powerReading = "Power: $power Watts"
             Log.d("MQTT", "saving power to csv $powerReading")
-            (context as PowerReadingService).lastReceivedTime = System.currentTimeMillis()
             saveToCsv(context, powerReading)
+            Log.d("MQTT", "resetting last received time")
+            service.lastReceivedTime = System.currentTimeMillis()
         }
     }
 }
