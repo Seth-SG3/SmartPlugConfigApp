@@ -105,6 +105,7 @@ class PowerReadingService : Service() {
                             viewModel.setCurrentTextOutput(result)
                             result.let { ip -> viewModel.setIpAddress(ip) } // Set the IP address in the ViewModel.
                         }
+                        lastReceivedTime=System.currentTimeMillis()
                     }
                     delay(60000)
                 }

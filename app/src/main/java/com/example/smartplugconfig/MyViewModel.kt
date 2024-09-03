@@ -240,18 +240,15 @@ class MainViewModel : ViewModel() {
     }
 
     fun sendMQTTConfig(onResult: (String) -> Unit) {
-        val ip = _ipAddress.value
-        val host = _ipAddressMQTT.value
         val topic = "smartPlug"
-        val port = _port
 
-        if (ip == null){
+        if (_ipAddress.value == null){
             Log.d("sendMQTTConfig", "plug ip not found")
         }
-        if (host == null){
+        if (_ipAddressMQTT.value == null){
             Log.d("sendMQTTConfig", "device ip not found")
         }
-        val mqttConfigUrl = "http://${ip}/cm?cmnd=Backlog%20MqttHost%20$host%3B%20MqttPort%20$port%3B%20MqttUser%20Test1%3B%20MqttPassword%20Test2%3B%20Topic%20$topic%3B%20SetOption140%201%3B%20MqttRetry%2010%3B%20MqttWifiTimeout%2020000%3B%20TelePeriod%2060"
+        val mqttConfigUrl = "http://${_ipAddress.value}/cm?cmnd=Backlog%20MqttHost%20${_ipAddressMQTT.value}%3B%20MqttPort%20$_port%3B%20MqttUser%20Test1%3B%20MqttPassword%20Test2%3B%20Topic%20$topic%3B%20SetOption140%201%3B%20MqttRetry%2010%3B%20MqttWifiTimeout%2020000%3B%20TelePeriod%2060"
 
         viewModelScope.launch {
             val result = sendHttpRequest(mqttConfigUrl,"MQTT")
@@ -302,9 +299,7 @@ class MainViewModel : ViewModel() {
                             "isLocalOnlyHotspotEnabled",
                             "Device IP Address: ${address.hostAddress}"
                         )
-                        if (_ipAddressMQTT.value == null) {
-                            _ipAddressMQTT.value = address.hostAddress
-                        }
+                        _ipAddressMQTT.value = address.hostAddress
                         return true
                     }
                 }
