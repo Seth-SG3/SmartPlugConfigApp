@@ -11,6 +11,7 @@ import kotlinx.coroutines.launch
 import mqtt.packets.mqtt.MQTTPublish
 import org.json.JSONObject
 
+//packet handler where new topics can be added to support future mqtt devices
 class MqttPacketHandler {
 
     private val _powerReadingFlow = MutableSharedFlow<String>()

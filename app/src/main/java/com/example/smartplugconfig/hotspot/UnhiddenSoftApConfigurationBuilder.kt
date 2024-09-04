@@ -5,6 +5,8 @@ import android.net.MacAddress
 import android.net.wifi.SoftApConfiguration
 import androidx.annotation.RequiresApi
 
+
+//this was a gist found on a medium article with some additions made by me(seth) by reading the android source code
 /**
  * Reflection workaround to access hidden SoftApConfiguration.Builder so it can be used to set
  * LocalOnlyHotspot on Android 13+
@@ -45,8 +47,6 @@ class UnhiddenSoftApConfigurationBuilder {
     }
 
 
-
-    //testing
     fun setAllowedClientList(allowedClientList: List<MacAddress>): UnhiddenSoftApConfigurationBuilder {
         builderClass.getMethod("setAllowedClientList", List::class.java).invoke(
             builderInstance, allowedClientList
@@ -54,7 +54,6 @@ class UnhiddenSoftApConfigurationBuilder {
         return this
     }
 
-    //testing not sure on the class definition at the end
     fun setBlockedClientList(blockedClientList: List<MacAddress>): UnhiddenSoftApConfigurationBuilder {
         builderClass.getMethod("setBlockedClientList", List::class.java).invoke(
             builderInstance, blockedClientList
@@ -72,7 +71,6 @@ class UnhiddenSoftApConfigurationBuilder {
     }
 
 
-    //testing
     fun setHiddenSsid(hiddenSsid:Boolean): UnhiddenSoftApConfigurationBuilder {
         builderClass.getMethod("setHiddenSsid", Boolean::class.javaPrimitiveType).invoke(
             builderInstance, hiddenSsid

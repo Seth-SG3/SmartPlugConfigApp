@@ -1,5 +1,6 @@
 package com.example.smartplugconfig
 
+//used to pass the service so the lastTimeReceived cna be updated by the packet handler correctly.
 object ServiceHolder {
     private var powerReadingService: PowerReadingService? = null
 

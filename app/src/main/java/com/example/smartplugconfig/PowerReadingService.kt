@@ -76,6 +76,7 @@ class PowerReadingService : Service() {
         }
     }
 
+    //checks if hotspot has turned off, only really an issue during setup, once running is pretty rare
     @RequiresApi(Build.VERSION_CODES.TIRAMISU)
     private fun checkAndEnableHotspot(context: Context, viewModel: MainViewModel) {
         CoroutineScope(Dispatchers.Main).launch {
@@ -91,6 +92,7 @@ class PowerReadingService : Service() {
         }
     }
 
+    //runs every 5 mins if no packets recieved, this is to allow for the case when the hotspots ip changes so needs to be reconfigured.
     private fun reconfigMqtt(viewModel: MainViewModel){
         CoroutineScope(Dispatchers.Main).launch {
             withContext(Dispatchers.IO) {
