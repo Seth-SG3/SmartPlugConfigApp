@@ -73,6 +73,7 @@ dependencies {
     implementation("io.github.davidepianca98:kmqtt-broker-jvm:0.4.8")
     implementation ("androidx.compose.material:material-icons-extended:1.6.8")
     implementation(libs.firebase.firestore.ktx)
+    implementation(libs.androidx.runtime.livedata)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
