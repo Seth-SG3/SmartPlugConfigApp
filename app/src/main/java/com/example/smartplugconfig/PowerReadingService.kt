@@ -107,7 +107,7 @@ class PowerReadingService : Service() {
                         }
                         lastReceivedTime=System.currentTimeMillis()
                     }
-                    delay(60000)
+                    delay(310000-(currentTime - lastReceivedTime))
                 }
             }
         }
