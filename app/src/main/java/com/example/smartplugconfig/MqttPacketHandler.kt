@@ -11,6 +11,7 @@ import kotlinx.coroutines.launch
 import mqtt.packets.mqtt.MQTTPublish
 import org.json.JSONObject
 
+//packet handler where new topics can be added to support future mqtt devices
 class MqttPacketHandler {
 
     private val _powerReadingFlow = MutableSharedFlow<String>()
@@ -24,7 +25,8 @@ class MqttPacketHandler {
             return
         }
 
-
+        //stat means the plug was polled for this message
+        //status8 is the packet containing sensor data that can eb requested from the plug.
         if (packet.topicName == "stat/smartPlug/STATUS8") {
             //val powerReading = String(packet.payload,Charsets.UTF_8)
             val powerReadingRaw =
@@ -41,6 +43,9 @@ class MqttPacketHandler {
             }
             Log.d("MQTT", "done")
         }
+
+        //tele refers to the fact the plug broadcasts this data every minute(can be changed) and is not polled
+        //Sensor refers to the packet type containing all relevant data of which we are scraping the power value.
         if (packet.topicName == "tele/smartPlug/SENSOR") {
             //val powerReading = String(packet.payload,Charsets.UTF_8).
             val powerReadingRaw =

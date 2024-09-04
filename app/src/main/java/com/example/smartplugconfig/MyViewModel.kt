@@ -86,7 +86,7 @@ class MainViewModel : ViewModel() {
         _ipAddress.value = ip
     }
 
-
+//finds the ip adress of the plug if connected
     fun scanDevices(onScanCompleted: (String) -> Unit) {
         val deviceScanner = DeviceScanner()
         deviceScanner.scanDevices(object : DeviceScanner.ScanCallback {
@@ -101,7 +101,7 @@ class MainViewModel : ViewModel() {
             }
         })
     }
-
+    //in the hotpot version simply opens settings for fulfilment user
     @SuppressLint("QueryPermissionsNeeded")
     fun connectToPlugWifi(context: Context): String {
         // Create an Intent to open the Wi-Fi settings
@@ -118,7 +118,7 @@ class MainViewModel : ViewModel() {
     }
 
 
-
+//sent when connected to plus wifi ap
     fun sendWifiConfig(
         ssid: String = "Pixel",
         password: String = "intrasonics",
@@ -229,6 +229,7 @@ class MainViewModel : ViewModel() {
         ).invoke(wifiManager, config, executor, callback)
     }
 
+    //send once plug is connected to local only hotspot
     fun sendMQTTConfig(onResult: (String) -> Unit) {
         val topic = "smartPlug"
 
@@ -251,6 +252,7 @@ class MainViewModel : ViewModel() {
         mqttBroker.setupMqttBroker(context)
     }
 
+    //only used to display value on screen. logging happens passively
     @RequiresApi(Build.VERSION_CODES.TIRAMISU)
     fun getPowerReading() {
         viewModelScope.launch {

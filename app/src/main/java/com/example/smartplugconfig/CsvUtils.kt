@@ -8,6 +8,7 @@ import java.io.IOException
 import java.text.SimpleDateFormat
 import java.util.*
 
+//object that writes recieved power values to a simple csv file to log
 object CsvUtils {
 
     fun saveToCsv(context: Context, data: String) {

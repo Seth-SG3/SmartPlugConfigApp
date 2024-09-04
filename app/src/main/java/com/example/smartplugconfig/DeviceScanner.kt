@@ -14,7 +14,7 @@ import java.net.InetSocketAddress
 import java.net.NetworkInterface
 import java.net.Socket
 
-// code from facto, class used in ip scan functionality
+// code from facto, class used in ip scan functionality, returns ip of th plug if connected.
 class DeviceScanner {
 
 

@@ -33,7 +33,7 @@ import androidx.compose.ui.unit.sp
 import com.example.smartplugconfig.MainViewModel
 import kotlinx.coroutines.delay
 
-
+//this is the composable that generates the ui for the hotspot version of the app, buttons run fucntions as labled and there is a text output on screen
 @RequiresApi(Build.VERSION_CODES.TIRAMISU)
 @Composable
 fun ButtonsWithTextOutput(

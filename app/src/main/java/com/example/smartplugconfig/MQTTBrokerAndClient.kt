@@ -15,6 +15,7 @@ import mqtt.packets.Qos
 import mqtt.packets.mqtt.MQTTConnect
 import mqtt.packets.mqtt.MQTTPublish
 
+//broker and client(used only to post messages) setup including packet listener
 class MQTTBrokerAndClient {
 
     val packetHandler = MqttPacketHandler()

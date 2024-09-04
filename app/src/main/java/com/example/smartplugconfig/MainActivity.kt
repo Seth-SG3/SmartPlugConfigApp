@@ -130,7 +130,7 @@ class MainActivity : ComponentActivity() {
 
 
 
-
+//runs the main composable and feeds the flow values from the mqtt broker to be displayed on screen
 @RequiresApi(Build.VERSION_CODES.TIRAMISU)
 @Composable
 fun SmartPlugConfigApp(viewModel: MainViewModel = viewModel()) {
