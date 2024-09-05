@@ -49,8 +49,7 @@ import com.example.smartplugconfig.PowerReadingCallback
 import com.example.smartplugconfig.data.SEND_PLUG_MIFI_INFO
 import com.example.smartplugconfig.data.START_DATA_CYCLING
 import com.example.smartplugconfig.data.WifiConnector
-import com.example.smartplugconfig.sendMQTTmessage
-import com.example.smartplugconfig.setupMqttBroker
+
 import kotlinx.coroutines.delay
 import java.lang.ref.WeakReference
 
@@ -59,8 +58,7 @@ fun ButtonsWithTextOutput(
     textToDisplay: String,
     viewModel: MainViewModel,
     modifier: Modifier = Modifier,
-    activity: WeakReference<MainActivity>,
-    plugWifiNetworks: SnapshotStateList<String>
+    activity: WeakReference<MainActivity>
 ) {
     var mifiSsid by remember { mutableStateOf("ssid") }
     var status by remember { mutableIntStateOf(1) }
@@ -176,10 +174,7 @@ fun ButtonsWithTextOutput(
 
         CONNECT_TO_PLUG_WIFI -> {
             Log.d("Status", "Status = $status")      // Allow connections to the plug wifi
-            WifiButtons.ChoosePlugWifi(
-                activity = activity,
-                plugWifiNetworks = plugWifiNetworks,
-            ) { result ->
+            WifiButtons.ChoosePlugWifi { result ->
                 if (result != null) {
                     when (result) {
                         "Success" -> {
@@ -206,7 +201,7 @@ fun ButtonsWithTextOutput(
         CHOOSE_MIFI_NETWORK -> {
             Log.d("Status", "Status = $status")
             // Choose MiFi Network
-            WifiButtons.ChooseMifiNetwork(activity = activity,
+            WifiButtons.ChooseMifiNetwork(
                 mifiNetwork = { mifiSsid = it }) { result ->
                 if (result != null) {
                     when (result) {
@@ -325,29 +320,11 @@ fun ButtonsWithTextOutput(
             activity.get()?.DataCycle()
         }
 
-        HOTSPOT_PAGE -> {
-            var currentTextOutput by remember { mutableStateOf("output") }
 
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                HotspotSetupView(textToDisplay = textToDisplay,
-                    setCurrentTextOutput = { currentTextOutput = it },
-                    viewModel = viewModel,
-                    modifier = modifier,
-                    activity = activity,
-                    plugWifiNetworks = plugWifiNetworks,
-                    context = context,
-                    status = { status = it })
-            } else {
-                status = 1
-            }
-
-        }
 
         51 -> {
             Log.d("Status", "Status = $status")      // Allow connections to the plug wifi
             WifiButtons.ChoosePlugWifi(
-                activity = activity,
-                plugWifiNetworks = plugWifiNetworks,
             ) { result ->
                 if (result != null) {
                     when (result) {
@@ -374,172 +351,3 @@ fun ButtonsWithTextOutput(
     }
 }
 
-@OptIn(ExperimentalUnsignedTypes::class)
-@RequiresApi(Build.VERSION_CODES.TIRAMISU)
-@Composable
-fun HotspotSetupView(
-    textToDisplay: String,
-    setCurrentTextOutput: (String) -> Unit,
-    viewModel: MainViewModel,
-    modifier: Modifier = Modifier,
-    activity: WeakReference<MainActivity>,
-    plugWifiNetworks: SnapshotStateList<String>,
-    context: Context,
-    status: (Int) -> Unit
-) {
-    val ipsosBlue = Color(0xFF0033A0) // Ipsos Blue color
-    val ipsosGreen = Color(0xFF00B140) // Ipsos Green color
-    var isScanning by remember { mutableStateOf(false) }
-    var loadingText by remember { mutableStateOf("Scanning") }
-    var isHotspotEnabled by remember { mutableStateOf(false) }
-    var connectToPlugWifi = false
-
-
-    LaunchedEffect(Unit) {
-        while (true) {
-            isHotspotEnabled = viewModel.isLocalOnlyHotspotEnabled()
-            delay(6000) // Check every minute
-        }
-    }
-
-    // LaunchedEffect to animate the loading text
-    LaunchedEffect(isScanning) {
-        while (isScanning) {
-            loadingText = "Scanning"
-            delay(500)
-            loadingText = "Scanning."
-            delay(500)
-            loadingText = "Scanning.."
-            delay(500)
-            loadingText = "Scanning..."
-            delay(500)
-        }
-    }
-
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            //.padding(16.dp)
-            .background(ipsosGreen), // Set green background
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Spacer(modifier = Modifier.height(100.dp))
-        Icon(
-            imageVector = if (isHotspotEnabled) Icons.Default.SignalWifi4Bar else Icons.Default.SignalWifiOff,
-            contentDescription = null,
-            tint = if (isHotspotEnabled) Color.Green else Color.Red,
-            modifier = Modifier.size(48.dp)
-        )
-        Text(
-            text = if (isHotspotEnabled) "Hotspot is ON" else "Hotspot is OFF",
-            fontSize = 20.sp,
-            color = if (isHotspotEnabled) Color.Green else Color.Red
-        )
-        Spacer(modifier = Modifier.height(50.dp))
-        Button(
-            onClick = {
-                status(51)
-            }, colors = ButtonDefaults.buttonColors(containerColor = ipsosBlue) // Set button color
-        ) {
-            Text("Connect to plug", color = Color.White) // Set text color to white for contrast
-        }
-        Spacer(modifier = Modifier.height(20.dp))
-        Button(
-            onClick = {
-                viewModel.sendWifiConfig { result ->
-                    setCurrentTextOutput(result)
-                }
-            }, colors = ButtonDefaults.buttonColors(containerColor = ipsosBlue)
-        ) {
-            Text("Send Wifi config", color = Color.White)
-        }
-        Spacer(modifier = Modifier.height(20.dp))
-        Button(
-            onClick = {
-                val result = viewModel.turnOnHotspot(context)
-                setCurrentTextOutput(result)
-            }, colors = ButtonDefaults.buttonColors(containerColor = ipsosBlue)
-        ) {
-            Text("Switch on Hotspot", color = Color.White)
-        }
-        Spacer(modifier = Modifier.height(20.dp))
-        Button(
-            onClick = {
-                isScanning = true
-                viewModel.scanDevices { result ->
-                    isScanning = false
-                    if (result != null) {
-                        setCurrentTextOutput(result)
-                    }
-                    result.let { ip ->
-                        if (ip != null) {
-                            viewModel.setIpAddress(ip)
-                        }
-                    } // Set the IP address in the ViewModel.
-                }
-            }, colors = ButtonDefaults.buttonColors(containerColor = ipsosBlue)
-        ) {
-            Text("Find IP address of plug", color = Color.White)
-        }
-        Spacer(modifier = Modifier.height(20.dp))
-        Button(
-            onClick = {
-                viewModel.sendMQTTConfig { result ->
-                    setCurrentTextOutput(result)
-                }
-
-            }, colors = ButtonDefaults.buttonColors(containerColor = ipsosBlue)
-        ) {
-            Text("Send MQTT config", color = Color.White)
-        }
-        Spacer(modifier = Modifier.height(20.dp))
-        Button(
-            onClick = {
-                setupMqttBroker(context)
-            }, colors = ButtonDefaults.buttonColors(containerColor = ipsosBlue)
-        ) {
-            Text("setup mqtt broker", color = Color.White)
-        }
-        Spacer(modifier = Modifier.height(20.dp))
-        Button(
-            onClick = {
-                sendMQTTmessage(
-                    "Power", "TOGGLE"
-                )
-            }, colors = ButtonDefaults.buttonColors(containerColor = ipsosBlue)
-        ) {
-            Text("Send MQTT client", color = Color.White)
-        }
-        Spacer(modifier = Modifier.height(20.dp))
-        Button(
-            onClick = {
-                viewModel.getPowerReading(object : PowerReadingCallback {
-                    override fun onPowerReadingReceived(power: String) {
-                        setCurrentTextOutput(power)
-                    }
-                }) { result ->
-                    setCurrentTextOutput(result)
-                }
-            }, colors = ButtonDefaults.buttonColors(containerColor = ipsosBlue)
-        ) {
-            Text("Pull power data", color = Color.White)
-        }
-        Spacer(modifier = Modifier.height(20.dp))
-        Text(
-            text = if (isScanning) loadingText else textToDisplay,
-            fontSize = 20.sp, // Increase text size
-            fontWeight = FontWeight.Bold, // Make text bold
-            color = Color.Black // Text color
-        )
-    }
-    if (connectToPlugWifi) {
-        WifiButtons.ChoosePlugWifi(
-            activity = activity,
-            plugWifiNetworks = plugWifiNetworks,
-        ) { result ->
-            if (result != null) {
-                connectToPlugWifi = false
-            }
-        }
-    }
-}

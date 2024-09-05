@@ -83,9 +83,10 @@ class PowerReadingService : Service() {
         fileHandlerInitialise()
         fileHandler.clearFile()
 
-
-        getPhoneMacAddress()
-        setupMqttBroker(applicationContext)
+        viewModel.isLocalOnlyHotspotEnabled()
+        viewModel.sendMQTTConfig { result -> }
+        //getPhoneMacAddress()
+        viewModel.setupMQTTBroker(applicationContext)
         checkAndEnableHotspot(applicationContext,viewModel)
         startForegroundService()
     }
@@ -210,45 +211,7 @@ class PowerReadingService : Service() {
     }
 
     // Gets data and then writes to a file
-    suspend fun writeData(
-        viewModel: MainViewModel,
-        ssid: String,
-        password: String,
-        currentTime: String,
-        context: Context,
-    ): String {
-        // Wait until initialization is complete
 
-        withContext(Dispatchers.IO) {
-            onCreateLatch.await()
-        }
-        return suspendCancellableCoroutine { cont ->
-            viewModel.getPowerReading(object : PowerReadingCallback {
-                override fun onPowerReadingReceived(power: String) {
-                }
-                }) { powerReading -> // Gets the current power
-                cont.resume(powerReading)
-                // Check network connection
-                if (powerReading.contains("Watts", ignoreCase = true)) {
-                    // Write power to file
-                    Log.d("PowerReading", "Power value is suitable")
-                    val record = "$currentTime - Power: $powerReading\n"
-                    Log.d("PowerReading", record)
-                    fileHandler.writeToFile(record, context = context)
-                } else {
-                    Log.d("PowerReading", "Connection has failed")
-
-
-                        connectToWifi(
-                            ssid = ssid,
-                            password = password,
-                        ) // If connection fails it reconnects
-                    fileHandler.writeToFile("$currentTime : Connection Failure\n", context = context)
-                    }
-                }
-
-            }
-        }
     // Connect to normal wifi
     @SuppressLint("ServiceCast")
     fun connectToWifi(ssid: String, password: String) {
@@ -346,18 +309,10 @@ class DataCycleActivity : ComponentActivity() {
                     .background(Color(0xFF00B140))
             ) {
                 LaunchedEffect(Unit) {
-                    val viewModel by viewModels<MainViewModel>()
+                    val viewModel = MainViewModel.getInstance()
                     currentTime = service!!.getCurrentTime()
 
-                    power =
-                        service?.writeData(
-                            viewModel,
-                            "4G-UFI-CFE",   // TODO: Make this not hard coded
-                            "1234567890",
-                            currentTime,
-                            context = context,
-                        )
-                            ?: "No service found"
+                    power = "No service found"
                     }
                 }
                 Text(text = power)

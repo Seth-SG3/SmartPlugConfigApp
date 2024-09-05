@@ -5,9 +5,12 @@ import android.content.Context
 import android.net.MacAddress
 import android.net.wifi.SoftApConfiguration
 import android.net.wifi.WifiManager
+import android.os.Build
 import android.util.Log
 import androidx.annotation.RequiresApi
 import androidx.compose.runtime.mutableStateOf
+import androidx.lifecycle.LiveData
+import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.smartplugconfig.data.DeviceScanner
@@ -32,7 +35,34 @@ import kotlin.coroutines.suspendCoroutine
 class MainViewModel : ViewModel() {
     private val ipAddress = mutableStateOf<String?>(null)
     private val _ipAddressMQTT = mutableStateOf<String?>(null)
+    private val _port = 8883
+    private val _topic = "smartPlug"
     private var plugMacAddress = ""
+    private val mqttBroker = MQTTBrokerAndClient()
+    private val packetHandler = MqttPacketHandler()
+
+    private val _textToDisplay = MutableLiveData("output")
+    val textToDisplay: LiveData<String> get() = _textToDisplay
+
+    fun setCurrentTextOutput(result:String){
+        _textToDisplay.value = result
+        Log.d("MQTT", "text updates: $result")
+    }
+
+    // LiveData to hold the power readings
+    private val _powerReadings = MutableLiveData<String>()
+    val powerReadings: LiveData<String> get() = _powerReadings
+
+    init {
+        // Start collecting the flow in the ViewModel's scope
+        viewModelScope.launch {
+            packetHandler.powerReadingFlow.collect { powerReading ->
+                _powerReadings.postValue(powerReading)
+                setCurrentTextOutput(powerReading)
+                Log.d("MQTT", "Power reading collected in ViewModel: $powerReading") // Logging
+            }
+        }
+    }
 
     fun findPlugMacAddress(onResult: (String) -> Unit) {
         viewModelScope.launch {
@@ -78,7 +108,7 @@ class MainViewModel : ViewModel() {
 
     fun setIpAddress(ip: String) {
         ipAddress.value = ip
-        Log.d("setipaddress $this", ip)
+        Log.d("setIpAddress $this", ip)
     }
 
     fun scanDevices(onScanCompleted: (String?) -> Unit) {
@@ -202,7 +232,7 @@ class MainViewModel : ViewModel() {
                 }
             })
 
-        return "starting a newhotspot connection..."
+        return "starting a new hotspot connection..."
     }
 
     @SuppressLint("NewApi")
@@ -266,16 +296,27 @@ class MainViewModel : ViewModel() {
             errorMessage
         }
     }
-    private fun setPowerReadingCallback(callback: PowerReadingCallback) {
-        powerReadingCallback = callback
+    @OptIn(ExperimentalUnsignedTypes::class)
+    fun setupMQTTBroker(context: Context){
+        mqttBroker.setupMqttBroker(context)
     }
 
-    fun getPowerReading(callback: PowerReadingCallback, onResult: (String) -> Unit) {
+    @RequiresApi(Build.VERSION_CODES.TIRAMISU)
+    fun getPowerReading() {
         viewModelScope.launch {
-            setPowerReadingCallback(callback)
-            setBrokerPowerReadingCallback(callback)
-            val result = getPowerReadingInternal()
-            onResult(result)
+            if (isLocalOnlyHotspotEnabled()) {
+                val result = _ipAddressMQTT.value?.let {
+                    mqttBroker.sendMQTTmessage(
+                        "Status",
+                        "8",
+                        it,
+                        _port,
+                        _topic
+                    )
+                }
+                Log.d("MQTT", "test result: $result")
+
+            }
         }
     }
 
@@ -325,9 +366,9 @@ class MainViewModel : ViewModel() {
                             "isLocalOnlyHotspotEnabled",
                             "Device IP Address: ${address.hostAddress}"
                         )
-                        if (_ipAddressMQTT.value == null) {
-                            _ipAddressMQTT.value = address.hostAddress
-                        }
+
+                        _ipAddressMQTT.value = address.hostAddress
+
                         return true
                     }
                 }

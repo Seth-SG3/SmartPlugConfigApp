@@ -15,10 +15,12 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.RequiresApi
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.snapshots.SnapshotStateList
+import androidx.compose.ui.platform.LocalContext
 import com.example.smartplugconfig.data.AppInitialisation
 import com.example.smartplugconfig.ui.ButtonsWithTextOutput
 import com.example.smartplugconfig.ui.theme.SmartPlugConfigTheme
@@ -28,8 +30,7 @@ import java.lang.ref.WeakReference
 class MainActivity : ComponentActivity() {
 
 
-    var mifiNetworks = mutableStateListOf<String>()
-    var plugWifiNetworks = mutableStateListOf<String>()
+
     private lateinit var appInitialisation: AppInitialisation
 
     @RequiresApi(Build.VERSION_CODES.TIRAMISU)
@@ -41,7 +42,7 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             SmartPlugConfigTheme {
-                SmartPlugConfigApp(activity = weakActivity, plugWifiNetworks = plugWifiNetworks)
+                SmartPlugConfigApp(activity = weakActivity)
             }
         }
     }
@@ -95,15 +96,17 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun SmartPlugConfigApp(viewModel: MainViewModel = MainViewModel.getInstance(), activity: WeakReference<MainActivity>, plugWifiNetworks: SnapshotStateList<String>) {
+fun SmartPlugConfigApp(viewModel: MainViewModel = MainViewModel.getInstance(), activity: WeakReference<MainActivity>) {
     val currentTextOutput by remember { mutableStateOf("output") }
+    val context = LocalContext.current
+
+    val textToDisplay by viewModel.textToDisplay.observeAsState("output")
 
     ButtonsWithTextOutput(
-        textToDisplay = currentTextOutput,
-
+        textToDisplay = textToDisplay,
         viewModel = viewModel,
         activity = activity,
-        plugWifiNetworks = plugWifiNetworks
+
     )
 }
 
