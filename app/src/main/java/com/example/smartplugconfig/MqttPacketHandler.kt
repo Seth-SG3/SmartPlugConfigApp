@@ -24,6 +24,9 @@ class MqttPacketHandler {
             Log.e("MQTT", "PowerReadingService instance is not available")
             return
         }
+        //more information about the topic names can be found at the following two links
+        //https://tasmota.github.io/docs/MQTT/#fulltopic
+        //https://tasmota.github.io/docs/Commands/
 
         //stat means the plug was polled for this message
         //status8 is the packet containing sensor data that can eb requested from the plug.
