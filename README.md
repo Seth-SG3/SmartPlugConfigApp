@@ -8,8 +8,15 @@ connect to the plugs wifi ap send wifi config http request (sets ssid and passwo
 
 Please find the Hotspot approach on the Checks Branch
 
-when using the Mi-Fi dongle approach the flow is like this...
+when using the Mi-Fi dongle approach the flow is documented here. This is slightly outdated and is more representative of the mifiDongle branch
+https://ipsos-mediacell.atlassian.net/wiki/spaces/PGDA/pages/4972445708/Flow+Chart+for+Mifi
 
 TODO
 
 Please find the Hotspot approach on the Master Branch
+
+Branches
+    Master - integration of mifi dongle and hotspot
+    MifiDongleTrimmed - Neatened version using just mifi dongle with hotspot code cut
+    Checks - Hotspot approach
+    Retrofit - Test branch for replacing http requests with retrofit library_
