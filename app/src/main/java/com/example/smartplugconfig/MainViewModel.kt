@@ -26,7 +26,7 @@ import java.net.URL
 import java.util.concurrent.Executor
 
 class MainViewModel : ViewModel() {
-    val ipAddress = mutableStateOf<String?>(null)
+    val ipAddress = mutableStateOf<String?>("192.168.4.1")
     private val _ipAddressMQTT = mutableStateOf<String?>(null)
     private var plugMacAddress = ""
 
